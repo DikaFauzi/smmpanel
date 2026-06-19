@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Layanan - <%= appName %></title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body class="mp-public-body mp-services-page">
+    <header class="mp-mp-nav">
+        <a class="mp-mp-brand" href="/">
+            <span class="mp-mp-logo">M</span>
+            <span><%= appName %></span>
+        </a>
+        <nav class="mp-mp-menu">
+            <a href="/">Utama</a>
+            <a href="/services" class="active">Layanan</a>
+            <a href="/contact">Kontak</a>
+            <a href="/login" class="mp-mp-login">↪ Masuk</a>
+        </nav>
+    </header>
+
+    <main>
+        <section class="mp-blue-page-hero">
+            <div class="mp-shape mp-shape-a"></div>
+            <div class="mp-shape mp-shape-b"></div>
+            <div class="mp-dots"></div>
+            <div class="mp-blue-page-inner">
+                <h1>Layanan</h1>
+            </div>
+            <div class="mp-wave mp-wave-1"></div>
+            <div class="mp-wave mp-wave-2"></div>
+        </section>
+
+        <section class="mp-services-shell">
+            <div class="mp-services-card">
+                <div class="mp-services-card-head">
+                    <div class="mp-services-title">
+                        <span class="mp-list-icon">☷</span>
+                        <strong>Layanan</strong>
+                    </div>
+                    <span class="mp-total-pill">Total data terfilter: <%= Number(filteredTotal || 0).toLocaleString('id-ID') %></span>
+                </div>
+
+                <form class="mp-service-filter-row" method="GET" action="/services">
+                    <label class="mp-select-wrap">
+                        <select name="kategori" aria-label="Kategori layanan">
+                            <option value="">Semua</option>
+                            <% categories.forEach(cat => { %>
+                                <option value="<%= cat.kategori %>" <%= filters.kategori === cat.kategori ? 'selected' : '' %>><%= cat.kategori %></option>
+                            <% }) %>
+                        </select>
+                    </label>
+
+                    <label class="mp-select-wrap">
+                        <select name="sort" aria-label="Sortir layanan">
+                            <option value="fastest" <%= filters.sort === 'fastest' ? 'selected' : '' %>>Sortir Waktu Tercepat</option>
+                            <option value="rating_high" <%= filters.sort === 'rating_high' ? 'selected' : '' %>>Rating Tertinggi</option>
+                            <option value="rating_low" <%= filters.sort === 'rating_low' ? 'selected' : '' %>>Rating Terendah</option>
+                            <option value="cheapest" <%= filters.sort === 'cheapest' ? 'selected' : '' %>>Harga Termurah</option>
+                            <option value="expensive" <%= filters.sort === 'expensive' ? 'selected' : '' %>>Harga Termahal</option>
+                        </select>
+                    </label>
+
+                    <div class="mp-search-wrap">
+                        <input type="search" name="q" placeholder="Cari..." value="<%= filters.q || '' %>" aria-label="Cari layanan">
+                        <button type="submit" aria-label="Cari">⌕</button>
+                    </div>
+                </form>
+
+                <div class="mp-service-table-wrap">
+                    <% const groupEntries = Object.entries(groupedServices || {}); %>
+                    <% if (!groupEntries.length) { %>
+                        <div class="mp-empty-service">
+                            <h3>Layanan tidak ditemukan</h3>
+                            <p>Coba ganti kategori, kata kunci, atau urutan sortir.</p>
+                        </div>
+                    <% } %>
+
+                    <% groupEntries.forEach(([groupName, groupItems]) => { %>
+                        <table class="mp-service-table">
+                            <thead>
+                                <tr class="mp-category-row">
+                                    <th colspan="8"><%= groupName %></th>
+                                </tr>
+                                <tr>
+                                    <th class="mp-col-id">ID</th>
+                                    <th>Layanan</th>
+                                    <th>Harga/K</th>
+                                    <th>Min.</th>
+                                    <th>Maks.</th>
+                                    <th>Waktu Rata-rata</th>
+                                    <th>Rating</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% groupItems.forEach(service => { %>
+                                    <% const rating = Math.max(0, Math.min(5, Math.round(Number(service.rating || 5)))); %>
+                                    <tr>
+                                        <td class="mp-service-id"><%= service.id %></td>
+                                        <td class="mp-service-name">
+                                            <strong><%= service.nama %></strong>
+                                            <% if (service.quality_label || service.refill_type || service.speed) { %>
+                                                <span><%= service.quality_label || 'Standard' %> • <%= service.refill_type && service.refill_type !== 'none' ? 'Refill' : 'No Refill' %> • <%= service.speed || 'Normal' %></span>
+                                            <% } %>
+                                        </td>
+                                        <td class="mp-price">Rp <%= Number(service.harga || 0).toLocaleString('id-ID') %></td>
+                                        <td><%= Number(service.min_order || 0).toLocaleString('id-ID') %></td>
+                                        <td><%= Number(service.max_order || 0).toLocaleString('id-ID') %></td>
+                                        <td class="mp-time-cell">
+                                            <span>Jumlah pesan rata-rata <%= Number(service.total_orders || 0).toLocaleString('id-ID') %>.</span>
+                                            <span>Waktu proses rata-rata <%= service.avg_time || service.start_time || 'Bertahap' %>.</span>
+                                        </td>
+                                        <td class="mp-rating" aria-label="Rating <%= rating %> dari 5">
+                                            <% for (let i = 1; i <= 5; i++) { %><span class="<%= i <= rating ? 'on' : '' %>">★</span><% } %>
+                                        </td>
+                                        <td class="mp-detail-cell"><a class="mp-detail-btn" href="/services/<%= service.id %>">☷ Detail</a></td>
+                                    </tr>
+                                <% }) %>
+                            </tbody>
+                        </table>
+                    <% }) %>
+                </div>
+
+                <%- include('partials/pagination') %>
+            </div>
+        </section>
+    </main>
+</body>
+</html>

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Masuk - <%= appName || 'DK PANEL' %></title>
+    <%- include('partials/panel-head') %>
+</head>
+<body class="auth-body">
+    <main class="auth-shell">
+        <section class="auth-hero">
+            <div class="auth-brand"><span class="mp-logo">D</span><strong><%= appName || 'DK PANEL' %></strong></div>
+            <h1>Pusat layanan social media marketing yang ringkas dan siap dipakai.</h1>
+            <p>Kelola order, deposit, layanan, dan saldo dalam satu panel biru-putih yang bersih.</p>
+            <div class="auth-pills"><span>Order cepat</span><span>Deposit manual</span><span>Admin panel</span></div>
+        </section>
+        <section class="auth-card">
+            <h2>Masuk</h2>
+            <p>Silakan masuk ke akun <%= appName || 'DK PANEL' %>.</p>
+            <% if(error){ %><div class="mp-alert"><%= error %></div><% } %>
+            <form action="/login" method="POST" class="mp-form">
+                <label>Email</label>
+                <input type="email" name="email" placeholder="email@domain.com" required>
+                <label>Password</label>
+                <input type="password" name="password" placeholder="Password" required>
+                <button type="submit" class="mp-btn mp-btn-full">Masuk</button>
+            </form>
+            <div class="auth-link">Belum punya akun? <a href="/register">Daftar sekarang</a></div>
+        </section>
+    </main>
+</body>
+</html>

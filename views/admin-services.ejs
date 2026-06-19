@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Layanan - <%= appName || 'DK PANEL' %></title>
+    <%- include('partials/panel-head') %>
+</head>
+<body class="mp-body">
+<%
+const servicesList = services || [];
+const activeCount = servicesList.filter(s => String(s.status || '').toLowerCase() === 'active').length;
+const inactiveCount = servicesList.length - activeCount;
+const categoryCount = [...new Set(servicesList.map(s => (s.kategori || '').trim()).filter(Boolean))].length;
+const categoryOptions = [...new Set(servicesList.map(s => (s.kategori || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+function safeText(value){ return String(value || '').replace(/\r?\n/g, ' &#10; '); }
+%>
+<div class="mp-layout">
+    <%- include('partials/admin-sidebar') %>
+    <main class="mp-main">
+        <%- include('partials/panel-top', {title:'Admin Layanan', subtitle:'Kelola layanan dengan lebih rapi, cepat, dan sinkron ke katalog serta form order.'}) %>
+
+        <section class="mp-admin-summary-grid service-summary-grid">
+            <article class="mp-admin-summary-card">
+                <div class="mp-admin-summary-icon">☷</div>
+                <div>
+                    <p>Total Layanan</p>
+                    <strong><%= servicesList.length %></strong>
+                    <small>Semua layanan yang terdaftar.</small>
+                </div>
+            </article>
+            <article class="mp-admin-summary-card success">
+                <div class="mp-admin-summary-icon">✓</div>
+                <div>
+                    <p>Layanan Aktif</p>
+                    <strong><%= activeCount %></strong>
+                    <small>Siap tampil di katalog dan order.</small>
+                </div>
+            </article>
+            <article class="mp-admin-summary-card danger-lite">
+                <div class="mp-admin-summary-icon">⏸</div>
+                <div>
+                    <p>Layanan Nonaktif</p>
+                    <strong><%= inactiveCount %></strong>
+                    <small>Disembunyikan dari user.</small>
+                </div>
+            </article>
+            <article class="mp-admin-summary-card purple">
+                <div class="mp-admin-summary-icon">#</div>
+                <div>
+                    <p>Kategori</p>
+                    <strong><%= categoryCount %></strong>
+                    <small>Dipakai untuk filter dan grouping.</small>
+                </div>
+            </article>
+        </section>
+
+        <div class="mp-two-col admin-services-grid service-admin-layout-v17">
+            <section class="mp-card sticky-service-form-card">
+                <div class="mp-card-head service-admin-card-head">
+                    <div>
+                        <h2>＋ Tambah Layanan</h2>
+                        <p>Masukkan data dasar dulu, lalu lengkapi metadata agar sinkron ke halaman order dan detail layanan.</p>
+                    </div>
+                    <span class="mp-chip">Form sinkron</span>
+                </div>
+
+                <form action="/admin/services/add" method="POST" class="mp-form service-admin-form" id="serviceCreateForm">
+                    <div class="service-form-section">
+                        <div class="service-form-section-head">
+                            <h3>Data Utama</h3>
+                            <small>Wajib diisi agar layanan bisa tampil dan dipakai.</small>
+                        </div>
+
+                        <label>Nama Layanan</label>
+                        <input id="create_nama" name="nama" required placeholder="Contoh: Instagram Followers NR5 [ No Refill ]">
+
+                        <label>Kategori</label>
+                        <input id="create_kategori" name="kategori" required list="serviceCategorySuggestions" placeholder="Contoh: Instagram Followers">
+                        <datalist id="serviceCategorySuggestions">
+                            <% categoryOptions.forEach(cat => { %>
+                                <option value="<%= cat %>"></option>
+                            <% }) %>
+                        </datalist>
+
+                        <div class="mp-form-row">
+                            <div>
+                                <label>Harga / 1000</label>
+                                <input id="create_harga" type="number" name="harga" required min="1" placeholder="1992">
+                            </div>
+                            <div>
+                                <label>Status</label>
+                                <select id="create_status" name="status">
+                                    <option value="active">active</option>
+                                    <option value="inactive">inactive</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mp-form-row">
+                            <div>
+                                <label>Min Order</label>
+                                <input id="create_min_order" type="number" name="min_order" required min="1" placeholder="10">
+                            </div>
+                            <div>
+                                <label>Max Order</label>
+                                <input id="create_max_order" type="number" name="max_order" required min="1" placeholder="25000">
+                            </div>
+                        </div>
+                    </div>
+
+                    <details class="service-advanced-details" open>
+                        <summary>Metadata Layanan Lanjutan</summary>
+                        <div class="service-form-section advanced-grid-body">
+                            <div class="service-form-section-head compact">
+                                <h3>Konten Detail</h3>
+                                <small>Konten ini akan tampil di katalog, modal detail, dan form order user.</small>
+                            </div>
+
+                            <label>Deskripsi Layanan</label>
+                            <textarea id="create_deskripsi" name="deskripsi" rows="5" placeholder="Speed 5-20K/days&#10;LOW QUALITY&#10;No refill"></textarea>
+
+                            <label>Petunjuk Target</label>
+                            <textarea id="create_target_hint" name="target_hint" rows="3" placeholder="Contoh: Masukkan username Instagram tanpa @ atau link target sesuai jenis layanan."></textarea>
+
+                            <div class="mp-form-row">
+                                <div>
+                                    <label>Jumlah Pesan Rata-rata</label>
+                                    <input id="create_avg_order_count" type="number" name="avg_order_count" min="0" placeholder="69">
+                                </div>
+                                <div>
+                                    <label>Waktu Rata-rata</label>
+                                    <input id="create_avg_time_text" name="avg_time_text" placeholder="2 jam 30 menit 26 detik">
+                                </div>
+                            </div>
+
+                            <div class="mp-form-row">
+                                <div>
+                                    <label>Rating</label>
+                                    <input id="create_rating" type="number" step="0.1" min="0" max="5" name="rating" value="5">
+                                </div>
+                                <div>
+                                    <label>Jumlah Penilaian</label>
+                                    <input id="create_rating_count" type="number" min="0" name="rating_count" value="0">
+                                </div>
+                            </div>
+
+                            <div class="mp-form-row">
+                                <div>
+                                    <label>Refill Label</label>
+                                    <input id="create_refill_label" name="refill_label" value="No Refill" placeholder="No Refill / Refill 30 Hari">
+                                </div>
+                                <div>
+                                    <label>Start Time</label>
+                                    <input id="create_start_time" name="start_time" placeholder="0-15 menit / instant">
+                                </div>
+                            </div>
+
+                            <div class="mp-form-row">
+                                <div>
+                                    <label>Speed Label</label>
+                                    <input id="create_speed_label" name="speed_label" placeholder="Speed 5-20K/days">
+                                </div>
+                                <div>
+                                    <label>Quality Label</label>
+                                    <input id="create_quality_label" name="quality_label" placeholder="LOW QUALITY / HQ / Real Account">
+                                </div>
+                            </div>
+                        </div>
+                    </details>
+
+                    <section class="service-preview-card" id="servicePreviewCard">
+                        <div class="service-preview-head">
+                            <h3>Preview Layanan</h3>
+                            <span class="mini-badge" id="previewStatusBadge">active</span>
+                        </div>
+                        <div class="service-preview-body">
+                            <strong id="previewName">Nama layanan akan tampil di sini</strong>
+                            <p class="service-preview-price">Harga: <b id="previewPrice">Rp 0/K</b></p>
+                            <div class="service-preview-grid">
+                                <div><span>Kategori</span><b id="previewCategory">-</b></div>
+                                <div><span>Min / Max</span><b id="previewMinMax">0 / 0</b></div>
+                                <div><span>Rating</span><b id="previewRating">5.0 / 0 penilaian</b></div>
+                                <div><span>Waktu</span><b id="previewTime">-</b></div>
+                            </div>
+                            <div class="service-preview-line">
+                                <span>Label</span>
+                                <p id="previewLabels">No Refill · - · -</p>
+                            </div>
+                            <div class="service-preview-line">
+                                <span>Deskripsi</span>
+                                <p id="previewDescription">Belum ada deskripsi layanan.</p>
+                            </div>
+                            <div class="service-preview-line">
+                                <span>Petunjuk Target</span>
+                                <p id="previewHint">Belum ada petunjuk target.</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <div class="service-form-footer">
+                        <button type="reset" class="mp-btn mp-btn-soft" id="serviceCreateReset">Reset Form</button>
+                        <button class="mp-btn">Tambah Layanan</button>
+                    </div>
+                </form>
+            </section>
+
+            <section class="mp-card service-list-card">
+                <div class="mp-card-head service-admin-card-head service-admin-card-head--list">
+                    <div>
+                        <h2>☷ Daftar Layanan</h2>
+                        <p>Kelola layanan dengan filter cepat, preview, dan edit dalam modal yang lebih rapi.</p>
+                    </div>
+                    <span class="mp-chip"><span id="visibleServiceCount"><%= servicesList.length %></span> / <%= servicesList.length %> layanan</span>
+                </div>
+
+                <div class="service-toolbar">
+                    <div class="mp-search service-admin-search compact">
+                        <input id="adminServiceSearch" placeholder="Cari nama layanan atau kategori...">
+                        <button type="button" aria-label="Cari">🔍</button>
+                    </div>
+                    <div class="service-filter-row">
+                        <select id="serviceStatusFilter">
+                            <option value="">Semua status</option>
+                            <option value="active">Hanya aktif</option>
+                            <option value="inactive">Hanya nonaktif</option>
+                        </select>
+                        <select id="serviceCategoryFilter">
+                            <option value="">Semua kategori</option>
+                            <% categoryOptions.forEach(cat => { %>
+                                <option value="<%= cat.toLowerCase() %>"><%= cat %></option>
+                            <% }) %>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mp-table-wrap service-table-wrap">
+                    <table class="mp-table" id="adminServicesTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Layanan</th>
+                                <th>Kategori</th>
+                                <th>Harga</th>
+                                <th>Min/Max</th>
+                                <th>Ringkasan</th>
+                                <th>Status</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        <% servicesList.forEach(s=>{ %>
+                            <tr class="admin-service-row"
+                                data-id="<%= s.id %>"
+                                data-nama="<%= safeText(s.nama) %>"
+                                data-kategori="<%= safeText(s.kategori) %>"
+                                data-harga="<%= s.harga || 0 %>"
+                                data-min_order="<%= s.min_order || 0 %>"
+                                data-max_order="<%= s.max_order || 0 %>"
+                                data-status="<%= (s.status || '').toLowerCase() %>"
+                                data-deskripsi="<%= safeText(s.deskripsi) %>"
+                                data-target_hint="<%= safeText(s.target_hint) %>"
+                                data-avg_order_count="<%= s.avg_order_count || 0 %>"
+                                data-avg_time_text="<%= safeText(s.avg_time_text) %>"
+                                data-rating="<%= s.rating || 5 %>"
+                                data-rating_count="<%= s.rating_count || 0 %>"
+                                data-refill_label="<%= safeText(s.refill_label || 'No Refill') %>"
+                                data-speed_label="<%= safeText(s.speed_label) %>"
+                                data-quality_label="<%= safeText(s.quality_label) %>"
+                                data-start_time="<%= safeText(s.start_time) %>"
+                                data-search="<%= String((s.nama||'')+' '+(s.kategori||'')).toLowerCase() %>">
+                                <td><span class="mp-id">#<%= s.id %></span></td>
+                                <td>
+                                    <strong class="service-row-title"><%= s.nama %></strong>
+                                    <small class="service-row-sub"><%= s.refill_label || 'No Refill' %> · <%= s.speed_label || 'Belum diisi' %></small>
+                                </td>
+                                <td><span class="service-category-pill"><%= s.kategori %></span></td>
+                                <td>
+                                    <strong>Rp <%= Number(s.harga||0).toLocaleString('id-ID') %></strong>
+                                    <small>/ 1000</small>
+                                </td>
+                                <td>
+                                    <strong><%= Number(s.min_order||0).toLocaleString('id-ID') %></strong>
+                                    <small>s/d</small>
+                                    <strong><%= Number(s.max_order||0).toLocaleString('id-ID') %></strong>
+                                </td>
+                                <td>
+                                    <div class="service-inline-meta">
+                                        <div><b>Avg</b> <span><%= Number(s.avg_order_count || 0).toLocaleString('id-ID') %> pesanan</span></div>
+                                        <div><b>Waktu</b> <span><%= s.avg_time_text || '-' %></span></div>
+                                        <div><b>Rating</b> <span><%= s.rating || 5 %> / <%= s.rating_count || 0 %></span></div>
+                                    </div>
+                                </td>
+                                <td><%- include('partials/status',{status:s.status}) %></td>
+                                <td class="mp-action-stack service-action-stack">
+                                    <button type="button" class="mp-btn small mp-btn-soft js-preview-service">Preview</button>
+                                    <button type="button" class="mp-btn small js-edit-service">Edit</button>
+                                    <form action="/admin/services/delete" method="POST" onsubmit="return confirm('Nonaktifkan layanan ini?')">
+                                        <input type="hidden" name="id" value="<%= s.id %>">
+                                        <button class="mp-btn small danger"><%= String(s.status||'').toLowerCase()==='inactive' ? 'Tetap Nonaktif' : 'Nonaktifkan' %></button>
+                                    </form>
+                                </td>
+                            </tr>
+                        <% }) %>
+                        <% if(!servicesList.length){ %>
+                            <tr>
+                                <td colspan="8" class="empty-cell">Belum ada layanan. Tambahkan layanan pertama dari panel sebelah kiri.</td>
+                            </tr>
+                        <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </main>
+</div>
+
+<div class="mp-modal-backdrop" id="servicePreviewModal" hidden>
+    <div class="mp-modal-card wide" role="dialog" aria-modal="true" aria-labelledby="servicePreviewTitle">
+        <div class="mp-modal-head">
+            <h2 id="servicePreviewTitle">Preview Layanan</h2>
+            <button type="button" class="mp-modal-close" data-close-modal="servicePreviewModal">×</button>
+        </div>
+        <div class="mp-modal-body">
+            <div class="service-detail-box service-detail-box--modal" id="servicePreviewModalBody"></div>
+        </div>
+    </div>
+</div>
+
+<div class="mp-modal-backdrop" id="serviceEditModal" hidden>
+    <div class="mp-modal-card wide" role="dialog" aria-modal="true" aria-labelledby="serviceEditTitle">
+        <div class="mp-modal-head">
+            <h2 id="serviceEditTitle">Edit Layanan</h2>
+            <button type="button" class="mp-modal-close" data-close-modal="serviceEditModal">×</button>
+        </div>
+        <div class="mp-modal-body">
+            <form action="/admin/services/update" method="POST" class="mp-form service-edit-modal-form" id="serviceEditForm">
+                <input type="hidden" name="id" id="edit_id">
+
+                <div class="service-form-section">
+                    <div class="service-form-section-head compact">
+                        <h3>Data Utama</h3>
+                        <small>Update data utama layanan di sini.</small>
+                    </div>
+
+                    <label>Nama Layanan</label>
+                    <input id="edit_nama" name="nama" required>
+
+                    <label>Kategori</label>
+                    <input id="edit_kategori" name="kategori" required list="serviceCategorySuggestions">
+
+                    <div class="mp-form-row">
+                        <div>
+                            <label>Harga / 1000</label>
+                            <input type="number" id="edit_harga" name="harga" required min="1">
+                        </div>
+                        <div>
+                            <label>Status</label>
+                            <select id="edit_status" name="status">
+                                <option value="active">active</option>
+                                <option value="inactive">inactive</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mp-form-row">
+                        <div>
+                            <label>Min Order</label>
+                            <input type="number" id="edit_min_order" name="min_order" required min="1">
+                        </div>
+                        <div>
+                            <label>Max Order</label>
+                            <input type="number" id="edit_max_order" name="max_order" required min="1">
+                        </div>
+                    </div>
+                </div>
+
+                <details class="service-advanced-details" open>
+                    <summary>Metadata Layanan Lanjutan</summary>
+                    <div class="service-form-section advanced-grid-body">
+                        <label>Deskripsi Layanan</label>
+                        <textarea id="edit_deskripsi" name="deskripsi" rows="5"></textarea>
+
+                        <label>Petunjuk Target</label>
+                        <textarea id="edit_target_hint" name="target_hint" rows="3"></textarea>
+
+                        <div class="mp-form-row">
+                            <div>
+                                <label>Jumlah Pesan Rata-rata</label>
+                                <input type="number" id="edit_avg_order_count" name="avg_order_count" min="0">
+                            </div>
+                            <div>
+                                <label>Waktu Rata-rata</label>
+                                <input id="edit_avg_time_text" name="avg_time_text">
+                            </div>
+                        </div>
+
+                        <div class="mp-form-row">
+                            <div>
+                                <label>Rating</label>
+                                <input type="number" step="0.1" min="0" max="5" id="edit_rating" name="rating">
+                            </div>
+                            <div>
+                                <label>Jumlah Penilaian</label>
+                                <input type="number" min="0" id="edit_rating_count" name="rating_count">
+                            </div>
+                        </div>
+
+                        <div class="mp-form-row">
+                            <div>
+                                <label>Refill Label</label>
+                                <input id="edit_refill_label" name="refill_label">
+                            </div>
+                            <div>
+                                <label>Start Time</label>
+                                <input id="edit_start_time" name="start_time">
+                            </div>
+                        </div>
+
+                        <div class="mp-form-row">
+                            <div>
+                                <label>Speed Label</label>
+                                <input id="edit_speed_label" name="speed_label">
+                            </div>
+                            <div>
+                                <label>Quality Label</label>
+                                <input id="edit_quality_label" name="quality_label">
+                            </div>
+                        </div>
+                    </div>
+                </details>
+
+                <div class="service-form-footer">
+                    <button type="button" class="mp-btn mp-btn-soft" data-close-modal="serviceEditModal">Tutup</button>
+                    <button class="mp-btn">Simpan Perubahan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+(function(){
+    const currency = new Intl.NumberFormat('id-ID');
+    const searchInput = document.getElementById('adminServiceSearch');
+    const statusFilter = document.getElementById('serviceStatusFilter');
+    const categoryFilter = document.getElementById('serviceCategoryFilter');
+    const rows = Array.from(document.querySelectorAll('.admin-service-row'));
+    const visibleCounter = document.getElementById('visibleServiceCount');
+
+    function nl2br(text){
+        return String(text || '').replace(/\r?\n/g, '<br>');
+    }
+
+    function rowData(row){
+        return Object.assign({}, row.dataset);
+    }
+
+    function renderServiceDetail(data){
+        const ratingValue = parseFloat(data.rating || 0);
+        const stars = '★'.repeat(Math.max(0, Math.round(ratingValue))) + '☆'.repeat(Math.max(0, 5 - Math.round(ratingValue)));
+        return `
+            <div class="modal-field">
+                <b>Layanan</b>
+                <p>#${data.id || '-'} – ${data.nama || '-'}</p>
+            </div>
+            <div class="modal-field service-modal-grid">
+                <div>
+                    <b>Harga/K</b>
+                    <p>Rp ${currency.format(Number(data.harga || 0))}</p>
+                </div>
+                <div>
+                    <b>Min. Pesan</b>
+                    <p>${currency.format(Number(data.min_order || 0))}</p>
+                </div>
+                <div>
+                    <b>Max. Pesan</b>
+                    <p>${currency.format(Number(data.max_order || 0))}</p>
+                </div>
+                <div>
+                    <b>Status</b>
+                    <p>${data.status || '-'}</p>
+                </div>
+            </div>
+            <div class="modal-field service-modal-grid">
+                <div>
+                    <b>Waktu Rata-rata</b>
+                    <p>${data.avg_time_text || '-'}</p>
+                </div>
+                <div>
+                    <b>Jumlah Pesan Rata-rata</b>
+                    <p>${currency.format(Number(data.avg_order_count || 0))} pesanan</p>
+                </div>
+                <div>
+                    <b>Rating</b>
+                    <p><span class="mp-stars">${stars}</span><br>${data.rating || 0} / ${data.rating_count || 0} penilaian</p>
+                </div>
+                <div>
+                    <b>Label</b>
+                    <p>${data.refill_label || '-'}<br>${data.speed_label || '-'}<br>${data.quality_label || '-'}</p>
+                </div>
+            </div>
+            <div class="modal-field">
+                <b>Deskripsi</b>
+                <p>${nl2br(data.deskripsi || 'Belum ada deskripsi layanan.')}</p>
+            </div>
+            <div class="modal-field">
+                <b>Petunjuk Target</b>
+                <p>${nl2br(data.target_hint || 'Belum ada petunjuk target.')}</p>
+            </div>
+        `;
+    }
+
+    function applyFilters(){
+        const keyword = (searchInput?.value || '').trim().toLowerCase();
+        const status = (statusFilter?.value || '').trim().toLowerCase();
+        const category = (categoryFilter?.value || '').trim().toLowerCase();
+        let visible = 0;
+
+        rows.forEach(row => {
+            const matchesSearch = !keyword || row.dataset.search.includes(keyword);
+            const matchesStatus = !status || (row.dataset.status || '') === status;
+            const matchesCategory = !category || (row.dataset.kategori || '').toLowerCase() === category;
+            const show = matchesSearch && matchesStatus && matchesCategory;
+            row.style.display = show ? '' : 'none';
+            if(show) visible += 1;
+        });
+        if(visibleCounter) visibleCounter.textContent = visible;
+    }
+
+    searchInput?.addEventListener('input', applyFilters);
+    statusFilter?.addEventListener('change', applyFilters);
+    categoryFilter?.addEventListener('change', applyFilters);
+    applyFilters();
+
+    const previewModal = document.getElementById('servicePreviewModal');
+    const previewBody = document.getElementById('servicePreviewModalBody');
+    const editModal = document.getElementById('serviceEditModal');
+
+    function openModal(modal){
+        if(!modal) return;
+        modal.hidden = false;
+        document.body.classList.add('modal-open');
+    }
+
+    function closeModal(modal){
+        if(!modal) return;
+        modal.hidden = true;
+        if(!document.querySelector('.mp-modal-backdrop:not([hidden])')) {
+            document.body.classList.remove('modal-open');
+        }
+    }
+
+    document.querySelectorAll('[data-close-modal]').forEach(btn => {
+        btn.addEventListener('click', () => closeModal(document.getElementById(btn.dataset.closeModal)));
+    });
+
+    [previewModal, editModal].forEach(modal => {
+        modal?.addEventListener('click', (e) => {
+            if(e.target === modal) closeModal(modal);
+        });
+    });
+    document.addEventListener('keydown', (e) => {
+        if(e.key === 'Escape') {
+            closeModal(previewModal);
+            closeModal(editModal);
+        }
+    });
+
+    document.querySelectorAll('.js-preview-service').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const row = btn.closest('.admin-service-row');
+            const data = rowData(row);
+            document.getElementById('servicePreviewTitle').textContent = `Preview Layanan #${data.id || ''}`;
+            previewBody.innerHTML = renderServiceDetail(data);
+            openModal(previewModal);
+        });
+    });
+
+    const editFields = [
+        'id','nama','kategori','harga','status','min_order','max_order','deskripsi','target_hint',
+        'avg_order_count','avg_time_text','rating','rating_count','refill_label','start_time','speed_label','quality_label'
+    ];
+    document.querySelectorAll('.js-edit-service').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const row = btn.closest('.admin-service-row');
+            const data = rowData(row);
+            editFields.forEach(field => {
+                const input = document.getElementById(`edit_${field}`);
+                if(input) input.value = data[field] || '';
+            });
+            openModal(editModal);
+        });
+    });
+
+    const previewMap = {
+        name: document.getElementById('previewName'),
+        price: document.getElementById('previewPrice'),
+        category: document.getElementById('previewCategory'),
+        minMax: document.getElementById('previewMinMax'),
+        rating: document.getElementById('previewRating'),
+        time: document.getElementById('previewTime'),
+        labels: document.getElementById('previewLabels'),
+        description: document.getElementById('previewDescription'),
+        hint: document.getElementById('previewHint'),
+        status: document.getElementById('previewStatusBadge')
+    };
+
+    function updateCreatePreview(){
+        const nama = document.getElementById('create_nama')?.value || 'Nama layanan akan tampil di sini';
+        const kategori = document.getElementById('create_kategori')?.value || '-';
+        const harga = Number(document.getElementById('create_harga')?.value || 0);
+        const minOrder = Number(document.getElementById('create_min_order')?.value || 0);
+        const maxOrder = Number(document.getElementById('create_max_order')?.value || 0);
+        const rating = document.getElementById('create_rating')?.value || '5';
+        const ratingCount = document.getElementById('create_rating_count')?.value || '0';
+        const avgTime = document.getElementById('create_avg_time_text')?.value || '-';
+        const refill = document.getElementById('create_refill_label')?.value || 'No Refill';
+        const speed = document.getElementById('create_speed_label')?.value || '-';
+        const quality = document.getElementById('create_quality_label')?.value || '-';
+        const description = document.getElementById('create_deskripsi')?.value || 'Belum ada deskripsi layanan.';
+        const hint = document.getElementById('create_target_hint')?.value || 'Belum ada petunjuk target.';
+        const status = document.getElementById('create_status')?.value || 'active';
+
+        previewMap.name.textContent = nama;
+        previewMap.price.textContent = `Rp ${currency.format(harga)}/K`;
+        previewMap.category.textContent = kategori;
+        previewMap.minMax.textContent = `${currency.format(minOrder)} / ${currency.format(maxOrder)}`;
+        previewMap.rating.textContent = `${rating} / ${ratingCount} penilaian`;
+        previewMap.time.textContent = avgTime;
+        previewMap.labels.textContent = `${refill} · ${speed} · ${quality}`;
+        previewMap.description.innerHTML = nl2br(description);
+        previewMap.hint.innerHTML = nl2br(hint);
+        previewMap.status.textContent = status;
+    }
+
+    document.querySelectorAll('#serviceCreateForm input, #serviceCreateForm textarea, #serviceCreateForm select').forEach(el => {
+        el.addEventListener('input', updateCreatePreview);
+        el.addEventListener('change', updateCreatePreview);
+    });
+    document.getElementById('serviceCreateReset')?.addEventListener('click', () => setTimeout(updateCreatePreview, 10));
+    updateCreatePreview();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Buat Pesanan - <%= appName || 'DK PANEL' %></title>
+    <%- include('partials/panel-head') %>
+</head>
+<body class="mp-body">
+<div class="mp-layout">
+    <%- include('partials/user-sidebar') %>
+    <main class="mp-main">
+        <%- include('partials/panel-top', {title: 'Buat Pesanan', subtitle: 'Pilih kategori, layanan, target, dan jumlah order.'}) %>
+
+        <div class="mp-category-grid">
+            <% const cats = [...new Set((services || []).map(s => s.kategori || 'Lainnya'))]; %>
+            <button class="mp-cat active" data-cat="">☰ Semua Kategori</button>
+            <% cats.slice(0, 11).forEach(cat => { %>
+                <button class="mp-cat" data-cat="<%= cat %>">◎ <%= cat %></button>
+            <% }) %>
+        </div>
+
+        <div class="mp-two-col">
+            <section class="mp-card">
+                <div class="mp-card-head">
+                    <h2>🛒 Buat Pesanan</h2>
+                    <span class="mp-chip">🏷 Kategori</span>
+                </div>
+
+                <form action="/order" method="POST" class="mp-form" id="orderForm">
+                    <label>Kategori</label>
+                    <select id="categorySelect">
+                        <option value="">Pilih...</option>
+                        <% cats.forEach(cat => { %><option value="<%= cat %>"><%= cat %></option><% }) %>
+                    </select>
+
+                    <label>Layanan</label>
+                    <select name="service_id" id="serviceSelect" required>
+                        <option value="">Pilih...</option>
+                        <% (services || []).forEach(service => { %>
+                            <option value="<%= service.id %>" data-cat="<%= service.kategori %>"><%= service.nama %></option>
+                        <% }) %>
+                    </select>
+
+                    <div class="mp-desc" id="serviceDesc">Deskripsi layanan.</div>
+
+                    <label>Link/Target</label>
+                    <input type="text" name="target" placeholder="Masukkan link atau username target" required>
+
+                    <label>Jumlah <span class="mini-badge">Min: <b id="minTxt">0</b></span> <span class="mini-badge">Max: <b id="maxTxt">0</b></span></label>
+                    <input type="number" name="jumlah" id="qtyInput" placeholder="Jumlah order" required>
+
+                    <label>Biaya</label>
+                    <div class="mp-cost"><span>Rp</span><input type="text" id="costInput" value="0" readonly></div>
+
+                    <button type="submit" class="mp-btn mp-btn-full">Pesan</button>
+                </form>
+            </section>
+
+            <aside class="mp-card mp-info-card">
+                <div class="mp-card-head"><h2>● Informasi</h2></div>
+                <div class="mp-info-content">
+                    <strong>Khusus pesan layanan Instagram tolong baca ini!</strong>
+                    <div class="mp-placeholder-img">IG<br>Guide</div>
+                    <p><strong>Penting Instagram:</strong></p>
+                    <p>Jika pengikut baru tidak terlihat, kemungkinan besar perlu disetujui secara manual. Pastikan akun target tidak membatasi undangan/follow.</p>
+                    <ol>
+                        <li>Buka Pengaturan dan Privasi.</li>
+                        <li>Pilih Ikuti dan Undang Teman.</li>
+                        <li>Nonaktifkan opsi Tandai untuk Ditinjau.</li>
+                        <li>Test pesan sedikit dulu untuk target sensitif.</li>
+                    </ol>
+                    <p><strong>Langkah-langkah membuat pesanan baru:</strong></p>
+                    <ul>
+                        <li>Pilih kategori.</li>
+                        <li>Pilih layanan.</li>
+                        <li>Masukkan target sesuai instruksi layanan.</li>
+                        <li>Masukkan jumlah lalu klik Pesan.</li>
+                    </ul>
+                </div>
+            </aside>
+        </div>
+    </main>
+</div>
+
+<script>
+const services = <%- JSON.stringify((services || []).map(s => ({id:s.id,nama:s.nama,kategori:s.kategori,harga:Number(s.harga||0),min:Number(s.min_order||0),max:Number(s.max_order||0),desc:String(s.deskripsi||s.description||''),avg:Number((s.id||0)%240+25),h:Number((s.id||0)%9+1),m:Number((s.id||0)%58+1),rating:Number(s.rating||5),ratingCount:Number(s.rating_count||2)}))).replace(/</g,'\\u003c') %>;
+const preselectedServiceId = <%- JSON.stringify(String(selectedServiceId || '')) %>;
+const categorySelect = document.getElementById('categorySelect');
+const serviceSelect = document.getElementById('serviceSelect');
+const qtyInput = document.getElementById('qtyInput');
+const costInput = document.getElementById('costInput');
+const minTxt = document.getElementById('minTxt');
+const maxTxt = document.getElementById('maxTxt');
+const desc = document.getElementById('serviceDesc');
+function fmt(n){ return new Intl.NumberFormat('id-ID').format(Math.ceil(Number(n||0))); }
+function selectedService(){ return services.find(s => String(s.id) === String(serviceSelect.value)); }
+function updateCost(){ const s = selectedService(); const q = Number(qtyInput.value || 0); costInput.value = s ? fmt((s.harga * q) / 1000) : '0'; }
+function stars(r){ return '★★★★★'.split('').map((x,i)=> i < Math.round(Number(r||0)) ? '★' : '☆').join(''); }
+function updateServiceInfo(){
+    const s = selectedService();
+    if(!s){ minTxt.textContent='0'; maxTxt.textContent='0'; desc.textContent='Deskripsi layanan.'; costInput.value='0'; return; }
+    minTxt.textContent=fmt(s.min); maxTxt.textContent=fmt(s.max); qtyInput.min=s.min; qtyInput.max=s.max; qtyInput.placeholder='Min '+fmt(s.min)+' - Max '+fmt(s.max);
+    desc.innerHTML = '<div class="service-detail-box">'
+        + '<strong>'+s.nama+'</strong>'
+        + '<b>Harga: Rp '+fmt(s.harga)+'/K</b>'
+        + '<hr>'
+        + '<b>Deskripsi:</b>'
+        + '<p>'+(s.desc ? s.desc.replace(/\n/g, '<br>') : [s.speedLabel || 'Speed 5-20K/days', s.qualityLabel || 'LOW QUALITY', s.refillLabel || 'No refill'].join('<br>'))+'</p>'
+        + (s.targetHint ? '<hr><b>Petunjuk Target:</b><p>'+s.targetHint.replace(/\n/g, '<br>')+'</p>' : '')
+        + '<hr>'
+        + '<b>Waktu Rata-Rata:</b>'
+        + '<p>Jumlah pesan rata-rata '+fmt(s.avgOrder)+'. Waktu proses rata-rata '+s.avgTime+'.</p>'
+        + '<hr>'
+        + '<b>Rating:</b>'
+        + '<p><span class="mp-stars">'+stars(s.rating)+'</span><br>('+fmt(s.ratingCount)+' rating dari pengguna.)</p>'
+        + '</div>';
+    updateCost();
+}
+categorySelect.addEventListener('change', () => { const cat=categorySelect.value; [...serviceSelect.options].forEach((opt,i)=>{ if(i===0) return; opt.hidden = cat && opt.dataset.cat !== cat; }); serviceSelect.value=''; updateServiceInfo(); });
+document.querySelectorAll('.mp-cat').forEach(btn=>btn.addEventListener('click',()=>{ document.querySelectorAll('.mp-cat').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); categorySelect.value=btn.dataset.cat; categorySelect.dispatchEvent(new Event('change')); }));
+serviceSelect.addEventListener('change', updateServiceInfo); qtyInput.addEventListener('input', updateCost);
+if(preselectedServiceId){
+    const found = services.find(s => String(s.id) === String(preselectedServiceId));
+    if(found){
+        categorySelect.value = found.kategori || '';
+        categorySelect.dispatchEvent(new Event('change'));
+        serviceSelect.value = String(found.id);
+        updateServiceInfo();
+        setTimeout(()=>document.getElementById('orderForm')?.scrollIntoView({behavior:'smooth', block:'center'}), 150);
+    }
+}
+document.getElementById('orderForm').addEventListener('submit', function(e){
+    const s = selectedService();
+    if(!s) return;
+    const q = Number(qtyInput.value || 0);
+    if(q < s.min || q > s.max){
+        e.preventDefault();
+        alert('Jumlah harus antara '+fmt(s.min)+' dan '+fmt(s.max)+'.');
+        return;
+    }
+    if(!confirm('Buat pesanan '+s.nama+' sebanyak '+fmt(q)+' dengan biaya Rp '+costInput.value+'?')){
+        e.preventDefault();
+    }
+});
+</script>
+</body>
+</html>

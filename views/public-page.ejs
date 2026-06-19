@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= page.title %> - <%= appName %></title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body class="mp-public-body">
+<header class="mp-navbar">
+    <a class="mp-brand" href="/"><span class="mp-brand-logo">M</span><span><%= appName %></span></a>
+    <nav class="mp-nav-menu">
+        <a href="/">Utama</a>
+        <a href="/#layanan">Layanan</a>
+        <a href="/faq">FAQ</a>
+        <a href="/terms">Ketentuan</a>
+        <a href="/login" class="mp-nav-login">Masuk</a>
+    </nav>
+</header>
+
+<main class="mp-page-main">
+    <section class="mp-page-hero">
+        <span class="mp-eyebrow"><%= page.eyebrow %></span>
+        <h1><%= page.title %></h1>
+        <p><%= page.subtitle %></p>
+    </section>
+
+    <section class="mp-page-card-grid">
+        <% page.blocks.forEach(block => { %>
+            <article class="mp-page-card">
+                <h2><%= block.title %></h2>
+                <p><%= block.body %></p>
+            </article>
+        <% }) %>
+    </section>
+</main>
+
+<footer class="mp-footer">
+    <p>© 2026 <%= appName %> - SMM Panel Indonesia Terbaik dan Termurah</p>
+    <nav>
+        <a href="/terms">Ketentuan Layanan</a>
+        <a href="/faq">Pertanyaan Umum</a>
+        <a href="/sewa-smm">SEWA SMM</a>
+        <a href="/status-pesanan">Penjelasan Status Pesanan</a>
+    </nav>
+</footer>
+</body>
+</html>

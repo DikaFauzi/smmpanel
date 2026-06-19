@@ -1,0 +1,22 @@
+<aside class="mp-sidebar">
+    <div class="mp-brand">
+        <span class="mp-logo">D</span>
+        <strong><%= appName || 'DK PANEL' %></strong>
+        <span class="mp-burger">☰</span>
+    </div>
+
+    <div class="mp-menu-label">ADMIN</div>
+    <nav class="mp-nav">
+        <a href="/admin" class="<%= currentPath === '/admin' ? 'active' : '' %>"><span>▦</span> Order</a>
+        <a href="/admin/users" class="<%= currentPath === '/admin/users' ? 'active' : '' %>"><span>👥</span> User</a>
+        <a href="/admin/services" class="<%= currentPath === '/admin/services' ? 'active' : '' %>"><span>☷</span> Layanan</a>
+        <a href="/admin/deposits" class="<%= currentPath === '/admin/deposits' ? 'active' : '' %>"><span>▣</span> Deposit</a>
+        <a href="/admin/balance-logs" class="<%= currentPath === '/admin/balance-logs' ? 'active' : '' %>"><span>▤</span> Mutasi Saldo</a>
+        <a href="/dashboard"><span>🏠</span> User Dashboard</a>
+    </nav>
+
+    <div class="mp-menu-label">AKUN</div>
+    <nav class="mp-nav mp-nav-small">
+        <a href="/logout"><span>↪</span> Logout</a>
+    </nav>
+</aside>

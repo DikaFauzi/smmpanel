@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Layanan - <%= appName || 'DK PANEL' %></title>
+    <%- include('partials/panel-head') %>
+</head>
+<body class="mp-body">
+<div class="mp-layout">
+    <%- include('partials/user-sidebar') %>
+    <main class="mp-main">
+        <%- include('partials/panel-top', {title: 'Layanan', subtitle: 'Daftar layanan aktif yang tersedia.'}) %>
+        <section class="mp-card">
+            <div class="mp-card-head">
+                <h2>☷ Layanan</h2>
+                <span class="mp-chip">Total data terfilter: <%= (services || []).length.toLocaleString('id-ID') %></span>
+            </div>
+            <div class="mp-filter-grid">
+                <select id="catFilter"><option value="">Semua</option><% [...new Set((services||[]).map(s=>s.kategori||'Lainnya'))].forEach(cat=>{ %><option value="<%= cat %>"><%= cat %></option><% }) %></select>
+                <select id="sortFilter"><option value="">Sortir</option><option value="price_asc">Harga Termurah</option><option value="price_desc">Harga Termahal</option></select>
+                <div class="mp-search"><input id="searchInput" placeholder="Cari..."><button>🔍</button></div>
+            </div>
+            <div class="mp-table-wrap">
+                <table class="mp-table" id="servicesTable">
+                    <thead><tr><th>ID</th><th>Layanan</th><th>Harga/K</th><th>Min.</th><th>Maks.</th><th>Waktu Rata-rata</th><th>Rating</th><th>Aksi</th></tr></thead>
+                    <tbody>
+                    <% let lastCat = null; (services || []).forEach(service => { if(lastCat !== service.kategori){ lastCat = service.kategori; %>
+                        <tr class="mp-group-row" data-cat="<%= service.kategori %>"><td colspan="8"><%= service.kategori || 'Lainnya' %> [ No Refill ]</td></tr>
+                    <% } %>
+                        <tr class="service-row" data-cat="<%= service.kategori %>" data-name="<%= String(service.nama || '').toLowerCase() %>" data-price="<%= Number(service.harga || 0) %>">
+                            <td>♡<br><%= service.id %></td>
+                            <td><%= service.nama %></td>
+                            <td>Rp <%= Number(service.harga || 0).toLocaleString('id-ID') %></td>
+                            <td><%= Number(service.min_order || 0).toLocaleString('id-ID') %></td>
+                            <td><%= Number(service.max_order || 0).toLocaleString('id-ID') %></td>
+                            <td>Jumlah pesan rata-rata <%= Number(service.avg_order_count || ((service.id || 0) % 240 + 25)).toLocaleString('id-ID') %>.<br>Waktu proses rata-rata <%= service.avg_time_text || (Number((service.id || 0) % 9 + 1) + ' jam ' + Number((service.id || 0) % 58 + 1) + ' menit') %>.</td>
+                            <td><span class="mp-stars"><%= '★★★★★'.split('').map((x,i)=> i < Math.round(Number(service.rating || 5)) ? '★' : '☆').join('') %></span></td>
+                            <td class="mp-action-stack">
+                                <a href="/order/single?service_id=<%= service.id %>" class="mp-btn small green">🛒 Pesan</a>
+                                <button class="mp-btn small yellow rating-btn" type="button"
+                                    data-name="<%= service.nama %>"
+                                    data-rating="<%= Number(service.rating || 5) %>"
+                                    data-count="<%= Number(service.rating_count || ((service.id || 0) % 12 + 2)) %>">★ Rating</button>
+                                <button class="mp-btn small detail-btn" type="button"
+                                    data-id="<%= service.id %>"
+                                    data-name="<%= service.nama %>"
+                                    data-price="Rp <%= Number(service.harga || 0).toLocaleString('id-ID') %>"
+                                    data-min="<%= Number(service.min_order || 0).toLocaleString('id-ID') %>"
+                                    data-max="<%= Number(service.max_order || 0).toLocaleString('id-ID') %>"
+                                    data-avg="Jumlah pesan rata-rata <%= Number(service.avg_order_count || ((service.id || 0) % 240 + 25)).toLocaleString('id-ID') %>.<br>Waktu proses rata-rata <%= service.avg_time_text || (Number((service.id || 0) % 9 + 1) + ' jam ' + Number((service.id || 0) % 58 + 1) + ' menit') %>."
+                                    data-desc="<%= String(service.deskripsi || [service.speed_label || 'Speed 5-20K/days', service.quality_label || 'LOW QUALITY', service.refill_label || 'No refill'].filter(Boolean).join('\n')).replace(/\r?\n/g, '<br>') %>"
+                                    data-target="<%= String(service.target_hint || '').replace(/\r?\n/g, '<br>') %>">☰ Detail</button>
+                            </td>
+                        </tr>
+                    <% }) %>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+</div>
+
+<div class="mp-modal-backdrop" id="serviceModal" hidden>
+    <div class="mp-modal-card">
+        <div class="mp-modal-head">
+            <h2 id="modalTitle">Detail Layanan</h2>
+            <button type="button" class="mp-modal-close" id="modalClose">×</button>
+        </div>
+        <div class="mp-modal-body" id="modalBody"></div>
+    </div>
+</div>
+
+<script>
+const cat = document.getElementById('catFilter');
+const sort = document.getElementById('sortFilter');
+const q = document.getElementById('searchInput');
+const tbody = document.querySelector('#servicesTable tbody');
+const modal = document.getElementById('serviceModal');
+const modalTitle = document.getElementById('modalTitle');
+const modalBody = document.getElementById('modalBody');
+const modalClose = document.getElementById('modalClose');
+function applyFilters(){
+    const cv=cat.value, query=(q.value||'').toLowerCase();
+    document.querySelectorAll('.service-row').forEach(r=>{
+        r.style.display = (!cv || r.dataset.cat===cv) && (!query || r.dataset.name.includes(query)) ? '' : 'none';
+    });
+    document.querySelectorAll('.mp-group-row').forEach(g=>{
+        const rows=[...document.querySelectorAll('.service-row[data-cat="'+CSS.escape(g.dataset.cat)+'"]')];
+        g.style.display = rows.some(r=>r.style.display!=='none') ? '' : 'none';
+    });
+}
+function openModal(title, html){
+    modalTitle.innerHTML = title;
+    modalBody.innerHTML = html;
+    modal.hidden = false;
+    document.body.classList.add('modal-open');
+}
+function closeModal(){ modal.hidden = true; document.body.classList.remove('modal-open'); }
+cat.addEventListener('change',applyFilters);
+q.addEventListener('input',applyFilters);
+sort.addEventListener('change',()=>{
+    const rows=[...tbody.querySelectorAll('.service-row')];
+    rows.sort((a,b)=> sort.value==='price_desc' ? b.dataset.price-a.dataset.price : a.dataset.price-b.dataset.price);
+    rows.forEach(r=>tbody.appendChild(r));
+    applyFilters();
+});
+modalClose.addEventListener('click', closeModal);
+modal.addEventListener('click', e=>{ if(e.target === modal) closeModal(); });
+document.addEventListener('keydown', e=>{ if(e.key === 'Escape' && !modal.hidden) closeModal(); });
+document.querySelectorAll('.detail-btn').forEach(btn=>btn.addEventListener('click',()=>{
+    openModal('Detail Layanan #'+btn.dataset.id,
+        '<div class="modal-field"><b>Layanan</b><p>'+btn.dataset.id+' - '+btn.dataset.name+'</p></div>'+
+        '<div class="modal-field"><b>Harga/K</b><p>'+btn.dataset.price+'</p></div>'+
+        '<div class="modal-field"><b>Min. Pesan</b><p>'+btn.dataset.min+'</p></div>'+
+        '<div class="modal-field"><b>Max. Pesan</b><p>'+btn.dataset.max+'</p></div>'+
+        '<div class="modal-field"><b>Waktu Rata-Rata</b><p>'+btn.dataset.avg+'</p></div>'+
+        '<div class="modal-field"><b>Deskripsi</b><p>'+btn.dataset.desc+'</p></div>'+
+        (btn.dataset.target ? '<div class="modal-field"><b>Petunjuk Target</b><p>'+btn.dataset.target+'</p></div>' : '')+
+        '<a class="mp-btn mp-btn-full" href="/order/single?service_id='+btn.dataset.id+'">🛒 Pesan Layanan Ini</a>'
+    );
+}));
+document.querySelectorAll('.rating-btn').forEach(btn=>btn.addEventListener('click',()=>{
+    openModal('Rating Layanan',
+        '<div class="modal-field"><b>'+btn.dataset.name+'</b><p><span class="mp-stars big">'+('★★★★★'.split('').map((x,i)=> i < Math.round(Number(btn.dataset.rating||0)) ? '★' : '☆').join(''))+'</span></p><p>'+btn.dataset.rating+' rating dari '+btn.dataset.count+' penilaian.</p></div>'+
+        '<p class="muted">Rating ini adalah tampilan ringkas untuk membantu memilih layanan. Pengelolaan rating real dapat ditambahkan nanti tanpa mengubah tombol ini.</p>'
+    );
+}));
+</script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+<!DOCTYPE html><html><head><title>Riwayat Deposit - <%= appName || 'DK PANEL' %></title><%- include('partials/panel-head') %></head><body class="mp-body"><div class="mp-layout"><%- include('partials/user-sidebar') %><main class="mp-main">
+<%- include('partials/panel-top', {title:'Riwayat Deposit', subtitle:'Pantau request deposit dan saldo yang sudah masuk.'}) %>
+<%
+const list = deposits || [];
+const saldoUser = Number((user && user.saldo) || 0);
+const approvedTotal = list.filter(d => ['approved','sukses','success'].includes(String(d.status||'').toLowerCase())).reduce((a,d)=>a+Number(d.amount||0),0);
+const pendingTotal = list.filter(d => String(d.status||'').toLowerCase()==='pending').reduce((a,d)=>a+Number(d.amount||0),0);
+%>
+<div class="mp-stat-grid deposit-balance-grid">
+    <div class="mp-stat deposit-balance-card"><span>💰</span><p>Saldo Aktif User</p><strong>Rp <%= saldoUser.toLocaleString('id-ID') %></strong><small>Bisa dipakai untuk order.</small></div>
+    <div class="mp-stat"><span>✓</span><p>Deposit Disetujui</p><strong>Rp <%= approvedTotal.toLocaleString('id-ID') %></strong><small>Total deposit yang sudah masuk saldo.</small></div>
+    <div class="mp-stat"><span>⏳</span><p>Deposit Pending</p><strong>Rp <%= pendingTotal.toLocaleString('id-ID') %></strong><small>Belum masuk saldo aktif.</small></div>
+</div>
+<section class="mp-card"><div class="mp-card-head"><h2>▣ Riwayat Deposit</h2><a href="/deposit" class="mp-btn small">Tambah Deposit</a></div><div class="mp-filter-grid"><input placeholder="2026"><select><option>Status</option></select><select><option>Filter Metode Pembayaran</option></select><div class="mp-search"><input placeholder="Cari..."><button>🔍</button></div></div><div class="mp-table-wrap"><table class="mp-table"><thead><tr><th>ID</th><th>Dibuat</th><th>Metode Pembayaran</th><th>Jumlah Deposit</th><th>Status</th><th>Keterangan Saldo</th></tr></thead><tbody><% if(list.length===0){ %><tr><td colspan="6" class="empty-cell">Belum ada deposit.</td></tr><% } %><% list.forEach(d=>{ const st=String(d.status||'').toLowerCase(); %><tr><td><%= d.id %></td><td><%= d.created_at ? new Date(d.created_at).toLocaleString('id-ID') : '-' %></td><td><%= d.metode %></td><td>Rp <%= Number(d.amount||0).toLocaleString('id-ID') %></td><td><%- include('partials/status',{status:d.status}) %></td><td><% if(['approved','sukses','success'].includes(st)){ %><span class="balance-note ok">Sudah masuk saldo</span><% } else if(st==='pending'){ %><span class="balance-note wait">Menunggu admin</span><% } else { %><span class="balance-note muted-note">Tidak masuk saldo</span><% } %></td></tr><% }) %></tbody></table></div></section>
+</main></div></body></html>

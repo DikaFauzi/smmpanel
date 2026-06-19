@@ -1,0 +1,39 @@
+<aside class="mp-sidebar">
+    <div class="mp-brand">
+        <span class="mp-logo">D</span>
+        <strong><%= appName || 'DK PANEL' %></strong>
+        <span class="mp-burger">☰</span>
+    </div>
+
+    <% if (user) { %>
+        <div class="mp-sidebar-balance">
+            <span>Saldo Aktif</span>
+            <strong>Rp <%= Number(user.saldo || 0).toLocaleString('id-ID') %></strong>
+            <a href="/deposit">Deposit Saldo</a>
+        </div>
+    <% } %>
+
+    <div class="mp-menu-label">MENU</div>
+    <nav class="mp-nav">
+        <a href="/dashboard" class="<%= ['/dashboard','/order/single'].includes(currentPath) ? 'active' : '' %>"><span>▦</span> Dasbor</a>
+        <a href="/order/single" class="<%= currentPath === '/order/single' ? 'active' : '' %>"><span>🛒</span> Buat Pesanan</a>
+        <a href="/orders" class="<%= currentPath === '/orders' ? 'active' : '' %>"><span>🛒</span> Riwayat Pemesanan</a>
+        <a href="/refills" class="<%= currentPath === '/refills' ? 'active' : '' %>"><span>♻</span> Refill</a>
+        <a href="/deposit" class="<%= currentPath === '/deposit' ? 'active' : '' %>"><span>▣</span> Deposit</a>
+        <a href="/deposits" class="<%= currentPath === '/deposits' ? 'active' : '' %>"><span>▤</span> Riwayat Deposit</a>
+        <a href="/tickets" class="<%= currentPath === '/tickets' ? 'active' : '' %>"><span>💬</span> Tiket</a>
+        <a href="/services" class="<%= currentPath === '/services' ? 'active' : '' %>"><span>☷</span> Layanan</a>
+        <a href="/news" class="<%= currentPath === '/news' ? 'active' : '' %>"><span>▣</span> Berita</a>
+        <a href="/balance-logs" class="<%= currentPath === '/balance-logs' ? 'active' : '' %>"><span>▤</span> Mutasi Saldo</a>
+        <% if(user && user.role === 'admin'){ %>
+            <a href="/admin"><span>⚙</span> Admin Panel</a>
+        <% } %>
+    </nav>
+
+    <div class="mp-menu-label">AKUN</div>
+    <nav class="mp-nav mp-nav-small">
+        <a href="/account" class="<%= currentPath === '/account' ? 'active' : '' %>"><span>⚙</span> Pengaturan</a>
+        <a href="/api/docs" class="<%= currentPath === '/api/docs' ? 'active' : '' %>"><span>API</span> Dokumentasi API</a>
+        <a href="/logout"><span>↪</span> Logout</a>
+    </nav>
+</aside>

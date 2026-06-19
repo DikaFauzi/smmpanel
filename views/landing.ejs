@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= appName %> - SMM Panel Indonesia Terbaik dan Termurah</title>
+    <meta name="description" content="SMM panel Indonesia untuk followers, likes, views, subscriber, dan layanan social media marketing dalam satu dashboard.">
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body class="mp-public-body">
+<header class="mp-navbar">
+    <a class="mp-brand" href="/" aria-label="Beranda <%= appName %>">
+        <span class="mp-brand-logo">M</span>
+        <span><%= appName %></span>
+    </a>
+    <nav class="mp-nav-menu" aria-label="Navigasi utama">
+        <a href="/">Utama</a>
+        <a href="#layanan">Layanan</a>
+        <a href="/faq">FAQ</a>
+        <a href="/terms">Ketentuan</a>
+        <a href="/status-pesanan">Status</a>
+        <% if (user) { %>
+            <a href="<%= user.role === 'admin' ? '/admin' : '/dashboard' %>" class="mp-nav-login">Dashboard</a>
+        <% } else { %>
+            <a href="/login" class="mp-nav-login">Masuk</a>
+        <% } %>
+    </nav>
+</header>
+
+<main>
+    <section class="mp-hero" id="utama">
+        <div class="mp-hero-copy">
+            <span class="mp-eyebrow">SMM Panel Indonesia</span>
+            <h1>PUSAT SMM Panel Indonesia Terbaik</h1>
+            <p>
+                <%= appName %> adalah website penyedia layanan social media marketing terlengkap, murah,
+                dan mudah digunakan untuk reseller maupun kebutuhan pribadi.
+            </p>
+            <div class="mp-hero-actions">
+                <% if (user) { %>
+                    <a href="<%= user.role === 'admin' ? '/admin' : '/dashboard' %>" class="mp-btn mp-btn-primary">Masuk Dashboard</a>
+                <% } else { %>
+                    <a href="/login" class="mp-btn mp-btn-primary">Masuk</a>
+                    <a href="/register" class="mp-btn mp-btn-soft">Register</a>
+                <% } %>
+            </div>
+        </div>
+
+        <div class="mp-hero-visual" aria-hidden="true">
+            <div class="mp-phone-card">
+                <div class="mp-phone-top"></div>
+                <div class="mp-phone-screen">
+                    <div class="mp-social-orbit mp-orbit-one">IG</div>
+                    <div class="mp-social-orbit mp-orbit-two">YT</div>
+                    <div class="mp-social-orbit mp-orbit-three">TT</div>
+                    <div class="mp-dashboard-mini">
+                        <span>Order Panel</span>
+                        <strong>Rp 128.000</strong>
+                        <small>Processing</small>
+                    </div>
+                    <div class="mp-bars"><i></i><i></i><i></i></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="mp-stat-wrap" aria-label="Statistik panel">
+        <article>
+            <strong><%= Number(stats.total_users || 47542).toLocaleString('id-ID') %></strong>
+            <span>Pengguna Aktif</span>
+        </article>
+        <article>
+            <strong><%= Number(stats.total_orders || 25313033).toLocaleString('id-ID') %></strong>
+            <span>Pesanan Dikerjakan</span>
+        </article>
+        <article>
+            <strong><%= Number(stats.total_services || 1075).toLocaleString('id-ID') %></strong>
+            <span>Layanan Tersedia</span>
+        </article>
+    </section>
+
+    <section class="mp-about-section">
+        <div class="mp-about-art" aria-hidden="true">
+            <div class="mp-blob-card">
+                <div class="mp-blob-icon">🚀</div>
+                <strong>SMM Growth</strong>
+                <span>Followers • Likes • Views</span>
+            </div>
+        </div>
+        <div class="mp-about-copy">
+            <span class="mp-eyebrow">Tentang Panel</span>
+            <h2><%= appName %> - SMM Panel Indonesia Terbaik dan Termurah</h2>
+            <p>
+                Platform ini membantu Anda membeli kebutuhan social media seperti followers, likes,
+                views, subscriber, dan engagement lain dalam satu dashboard yang sederhana.
+            </p>
+            <p>
+                Dengan bergabung, Anda bisa menjadi reseller social media, mengelola pesanan customer,
+                melakukan deposit saldo, dan memantau status order dengan lebih rapi.
+            </p>
+            <a href="/register" class="mp-btn mp-btn-primary">Kontak Kami</a>
+        </div>
+    </section>
+
+    <section class="mp-feature-section">
+        <div class="mp-section-title">
+            <span class="mp-eyebrow">Kenapa Harus</span>
+            <h2><%= appName %>?</h2>
+        </div>
+        <div class="mp-feature-grid">
+            <article>
+                <div class="mp-feature-img">🏆</div>
+                <h3>Layanan Berkualitas</h3>
+                <p>Berbagai layanan social media disiapkan agar proses order terasa lebih mudah dan terkontrol.</p>
+            </article>
+            <article>
+                <div class="mp-feature-img">🎧</div>
+                <h3>Pelayanan Bantuan</h3>
+                <p>Admin dapat memantau deposit, order, mutasi saldo, dan kebutuhan user dari panel admin.</p>
+            </article>
+            <article>
+                <div class="mp-feature-img">📱</div>
+                <h3>Desain Clean & Responsive</h3>
+                <p>Tampilan public page dibuat ringan, bersih, dan tetap nyaman untuk desktop maupun mobile.</p>
+            </article>
+        </div>
+    </section>
+
+    <section class="mp-services-section" id="layanan">
+        <div class="mp-section-title">
+            <span class="mp-eyebrow">Layanan</span>
+            <h2>Layanan Social Media Populer</h2>
+            <p>Pilih layanan dari dashboard setelah login. Data contoh di bawah otomatis mengambil layanan aktif dari database.</p>
+        </div>
+        <% if(sampleServices.length){ %>
+            <div class="mp-service-grid">
+                <% sampleServices.slice(0, 6).forEach(service => { %>
+                    <article>
+                        <span><%= service.kategori || 'Social Media' %></span>
+                        <h3><%= service.nama_layanan %></h3>
+                        <p><%= service.deskripsi || 'Layanan social media marketing siap digunakan melalui dashboard panel.' %></p>
+                        <div>
+                            <strong>Rp <%= Number(service.harga_per_1000 || 0).toLocaleString('id-ID') %></strong>
+                            <small>/ 1000</small>
+                        </div>
+                    </article>
+                <% }) %>
+            </div>
+        <% } else { %>
+            <div class="mp-empty-service">
+                <h3>Belum ada layanan aktif</h3>
+                <p>Tambahkan layanan dari admin panel agar section ini otomatis muncul.</p>
+            </div>
+        <% } %>
+    </section>
+
+    <section class="mp-testimonial-section">
+        <div class="mp-section-title">
+            <span class="mp-eyebrow">Apa Kata Mereka?</span>
+            <h2>Dipakai untuk reseller, creator, dan bisnis kecil.</h2>
+        </div>
+        <div class="mp-testimonial-grid">
+            <article><p>“Panelnya simpel, enak buat input order dan pantau saldo.”</p><strong>Bayu Fahri</strong><span>Reseller Sosmed</span></article>
+            <article><p>“Cocok buat kebutuhan engagement campaign harian.”</p><strong>Doni Hamzah</strong><span>Content Creator</span></article>
+            <article><p>“Dashboard adminnya membantu buat cek deposit dan order masuk.”</p><strong>Robby Sanjaya</strong><span>Owner Agency</span></article>
+        </div>
+    </section>
+
+    <section class="mp-faq-section">
+        <div class="mp-section-title">
+            <span class="mp-eyebrow">Pertanyaan Umum</span>
+            <h2>Hal yang sering ditanyakan client.</h2>
+        </div>
+        <div class="mp-faq-layout">
+            <div class="mp-faq-art">?</div>
+            <div class="mp-faq-list">
+                <details open>
+                    <summary>Apa itu SMM Panel?</summary>
+                    <p>SMM Panel adalah platform untuk membeli layanan social media marketing seperti followers, likes, views, dan subscriber.</p>
+                </details>
+                <details>
+                    <summary>Bagaimana cara membuat pesanan?</summary>
+                    <p>Daftar akun, deposit saldo, pilih layanan, masukkan target, lalu pantau status pesanan dari dashboard.</p>
+                </details>
+                <details>
+                    <summary>Apa arti status pesanan?</summary>
+                    <p>Pending berarti menunggu proses, Processing sedang dikerjakan, Completed selesai, Partial sebagian selesai, dan Failed gagal.</p>
+                </details>
+            </div>
+        </div>
+    </section>
+
+    <section class="mp-payment-section">
+        <h2>Metode Pembayaran</h2>
+        <div class="mp-payment-icons" aria-label="Metode pembayaran">
+            <span>BCA</span><span>BRI</span><span>BNI</span><span>Mandiri</span><span>DANA</span><span>OVO</span><span>QRIS</span><span>GOPAY</span>
+        </div>
+    </section>
+</main>
+
+<footer class="mp-footer">
+    <p>© 2026 <%= appName %> - SMM Panel Indonesia Terbaik dan Termurah</p>
+    <nav>
+        <a href="/terms">Ketentuan Layanan</a>
+        <a href="/faq">Pertanyaan Umum</a>
+        <a href="/sewa-smm">SEWA SMM</a>
+        <a href="/status-pesanan">Penjelasan Status Pesanan</a>
+    </nav>
+</footer>
+</body>
+</html>

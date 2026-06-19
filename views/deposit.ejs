@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head><title>Deposit - <%= appName || 'DK PANEL' %></title><%- include('partials/panel-head') %></head>
+<body class="mp-body"><div class="mp-layout"><%- include('partials/user-sidebar') %><main class="mp-main">
+<%- include('partials/panel-top', {title:'Deposit Saldo', subtitle:'Top up saldo user untuk membuat pesanan.'}) %>
+<% const saldoUser = Number((user && user.saldo) || 0); %>
+<div class="mp-stat-grid deposit-balance-grid">
+    <div class="mp-stat deposit-balance-card"><span>💰</span><p>Saldo Aktif</p><strong>Rp <%= saldoUser.toLocaleString('id-ID') %></strong><small>Saldo ini dipakai untuk membayar order.</small></div>
+    <div class="mp-stat"><span>▣</span><p>Minimal Deposit</p><strong>Rp 10.000</strong><small>Request diproses manual oleh admin.</small></div>
+</div>
+<div class="mp-two-col">
+<section class="mp-card"><div class="mp-card-head"><h2>▣ Request Deposit</h2><span class="mp-chip">Saldo saat ini: Rp <%= saldoUser.toLocaleString('id-ID') %></span></div>
+<% if(error){ %><div class="mp-alert"><%= error %></div><% } %>
+<div class="pay-list">
+<% ['QRIS BONUS 11% ( FEE Rp 750 + 0.70% ) [ ON 24 JAM ] [ Emergency 2 ]','QRIS BONUS 10% ( fee 1% ) [ ON 24 JAM ] V3','Bank BCA bonus 11% ( minimal 10.000 )'].forEach((m,i)=>{ %>
+<label class="pay-item"><input type="radio" form="depositForm" name="metode" value="<%= m %>" <%= i===0?'checked':'' %>><span class="qr">QRIS</span><div><strong><%= m %></strong><p>Minimal Deposit: Rp 10.000<br>Maksimal Deposit: Rp 10.000.000<br>Jadwal Online: 24 Jam</p><b>Online [24 Jam]</b></div></label>
+<% }) %>
+</div>
+<form id="depositForm" action="/deposit" method="POST" enctype="multipart/form-data" class="mp-form deposit-form">
+<label>Jumlah Deposit</label><input type="number" name="amount" min="10000" placeholder="Minimal Rp10.000" required>
+<label>Bukti Transfer</label><input type="file" name="proof_image" accept="image/*" required>
+<div class="deposit-help-box">Setelah admin approve, saldo user akan otomatis bertambah dan tercatat di Mutasi Saldo.</div>
+<button class="mp-btn mp-btn-full" type="submit">Kirim Request Deposit</button>
+</form></section>
+<aside class="mp-card mp-info-card"><div class="mp-card-head"><h2>● Informasi</h2></div><div class="mp-info-content"><p>- Cara deposit melalui Bank : <b>MELALUI BANK</b><br>- Cara deposit melalui QRIS : <b>MELALUI QRIS</b></p><h2>Langkah-langkah:</h2><ul><li>Pilih jenis pembayaran yang diinginkan.</li><li>Masukkan jumlah deposit.</li><li>Upload bukti transfer.</li><li>Tunggu admin memproses request.</li><li>Jika disetujui, saldo aktif akan bertambah otomatis.</li></ul><h2>Penting:</h2><ul><li>Pastikan nominal transfer sesuai.</li><li>Deposit pending belum masuk ke saldo aktif.</li><li>Cek riwayat deposit dan mutasi saldo untuk melihat status.</li></ul></div></aside>
+</div></main></div></body></html>

@@ -1,0 +1,10 @@
+<header class="mp-topbar">
+    <div>
+        <h1><%= title %></h1>
+        <% if(typeof subtitle !== 'undefined' && subtitle){ %><p><%= subtitle %></p><% } %>
+    </div>
+    <div class="mp-top-actions">
+        <button type="button" class="mp-icon-btn" title="Mode">☾</button>
+        <a href="/account" class="mp-avatar" title="Akun"><%= (user && user.username ? user.username[0] : 'D').toUpperCase() %></a>
+    </div>
+</header>

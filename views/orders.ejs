@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html>
+<head><title>Riwayat Pemesanan - <%= appName || 'DK PANEL' %></title><%- include('partials/panel-head') %></head>
+<body class="mp-body"><div class="mp-layout"><%- include('partials/user-sidebar') %><main class="mp-main">
+<%- include('partials/panel-top', {title:'Pesanan', subtitle:'Pantau status dan riwayat order.'}) %>
+<div class="mp-stat-grid"><div class="mp-stat"><span>🛒</span><p>Semua Pesanan</p><strong><%= (orders||[]).length.toLocaleString('id-ID') %></strong></div><div class="mp-stat"><span>▣</span><p>Total Belanja</p><strong>Rp <%= (orders||[]).reduce((a,o)=>a+Number(o.total||0),0).toLocaleString('id-ID') %></strong></div></div>
+<section class="mp-card"><div class="mp-card-head"><h2>🛒 Pesanan</h2></div><div class="mp-filter-grid"><button class="mp-btn" type="button">Copy ID Pesanan</button><input placeholder="2026"><select><option>Status</option></select><input class="span-2" placeholder="Filter Layanan"><div class="mp-search"><input id="orderSearch" placeholder="Cari..."><button>🔍</button></div></div>
+<div class="mp-table-wrap"><table class="mp-table"><thead><tr><th>ID</th><th>Dibuat</th><th>Layanan</th><th>Target</th><th>Jumlah</th><th>Biaya</th><th>Status</th><th>Aksi</th></tr></thead><tbody>
+<% if((orders||[]).length===0){ %><tr><td colspan="8" class="empty-cell">Belum ada order.</td></tr><% } %>
+<% (orders||[]).forEach(order=>{ %><tr><td><span class="mp-id">#<%= order.id %></span></td><td><%= order.created_at ? new Date(order.created_at).toLocaleString('id-ID') : '-' %></td><td><%= order.nama %></td><td class="target-cell"><%= order.target %></td><td><%= Number(order.jumlah||0).toLocaleString('id-ID') %></td><td>Rp <%= Number(order.total||0).toLocaleString('id-ID') %></td><td><%- include('partials/status',{status:order.status}) %></td><td><button class="mp-btn small">Detail</button></td></tr><% }) %>
+</tbody></table></div></section>
+</main></div></body></html>

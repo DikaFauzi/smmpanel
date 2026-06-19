@@ -1,0 +1,13 @@
+<% if(typeof pagination !== 'undefined' && pagination){ %>
+    <div class="pagination-bar">
+        <span>Total: <%= pagination.total.toLocaleString('id-ID') %> data</span>
+        <div class="pagination-actions">
+            <% const baseQuery = new URLSearchParams(query || {}); %>
+            <% baseQuery.set('page', Math.max(1, pagination.page - 1)); %>
+            <a class="page-btn <%= pagination.hasPrev ? '' : 'disabled' %>" href="?<%= baseQuery.toString() %>">Prev</a>
+            <span>Halaman <%= pagination.page %> / <%= pagination.totalPages %></span>
+            <% baseQuery.set('page', pagination.page + 1); %>
+            <a class="page-btn <%= pagination.hasNext ? '' : 'disabled' %>" href="?<%= baseQuery.toString() %>">Next</a>
+        </div>
+    </div>
+<% } %>
