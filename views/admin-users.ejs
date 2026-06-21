@@ -1,22 +1,137 @@
 <!DOCTYPE html>
 <html>
-<head><title>Admin User - <%= appName || 'DK PANEL' %></title><%- include('partials/panel-head') %></head>
-<body class="mp-body"><div class="mp-layout"><%- include('partials/admin-sidebar') %><main class="mp-main">
-<%- include('partials/panel-top', {title:'Admin User', subtitle:'Kelola akun, status, role, dan saldo deposit user.'}) %>
-<%
-const userList = users || [];
-const totalSaldo = userList.reduce((a,u)=>a+Number(u.saldo||0),0);
-const activeUsers = userList.filter(u => String(u.status||'').toLowerCase()==='active').length;
-%>
-<div class="mp-admin-summary-grid service-summary-grid">
-    <article class="mp-admin-summary-card"><div class="mp-admin-summary-icon">👥</div><div><p>Total User</p><strong><%= userList.length %></strong><small>Semua akun terdaftar.</small></div></article>
-    <article class="mp-admin-summary-card success"><div class="mp-admin-summary-icon">✓</div><div><p>User Aktif</p><strong><%= activeUsers %></strong><small>Bisa login dan order.</small></div></article>
-    <article class="mp-admin-summary-card purple"><div class="mp-admin-summary-icon">💰</div><div><p>Total Saldo User</p><strong>Rp <%= totalSaldo.toLocaleString('id-ID') %></strong><small>Saldo aktif seluruh user.</small></div></article>
+<head>
+    <title>Admin User - <%= appName || 'DK PANEL' %></title>
+    <%- include('partials/panel-head') %>
+</head>
+<body class="mp-body">
+<div class="mp-layout">
+    <%- include('partials/admin-sidebar') %>
+    <main class="mp-main admin-users-final-v31">
+        <%- include('partials/panel-top', {title:'Admin User', subtitle:'Kelola akun, status, role, dan saldo deposit user.'}) %>
+        <%
+        const userList = users || [];
+        const totalSaldo = userList.reduce((a,u)=>a+Number(u.saldo||0),0);
+        const activeUsers = userList.filter(u => String(u.status||'').toLowerCase()==='active').length;
+        %>
+
+        <section class="mp-admin-summary-grid admin-user-summary-v31">
+            <article class="mp-admin-summary-card">
+                <div class="mp-admin-summary-icon">👥</div>
+                <div>
+                    <p>Total User</p>
+                    <strong><%= userList.length %></strong>
+                    <small>Semua akun terdaftar.</small>
+                </div>
+            </article>
+            <article class="mp-admin-summary-card success">
+                <div class="mp-admin-summary-icon">✓</div>
+                <div>
+                    <p>User Aktif</p>
+                    <strong><%= activeUsers %></strong>
+                    <small>Bisa login dan order.</small>
+                </div>
+            </article>
+            <article class="mp-admin-summary-card purple">
+                <div class="mp-admin-summary-icon">💰</div>
+                <div>
+                    <p>Total Saldo User</p>
+                    <strong>Rp <%= totalSaldo.toLocaleString('id-ID') %></strong>
+                    <small>Saldo aktif seluruh user.</small>
+                </div>
+            </article>
+        </section>
+
+        <section class="mp-card user-balance-admin-card admin-user-card-v31">
+            <div class="mp-card-head admin-user-card-head-v31">
+                <div>
+                    <h2>👥 User & Saldo Deposit</h2>
+                    <p>Saldo aktif user hanya boleh <b>ditambah</b> oleh admin. Pengurangan saldo tidak tersedia agar saldo deposit user tetap aman dan tidak dikoreksi sembarangan.</p>
+                </div>
+                <span class="mp-chip safe-chip-v31">Tambah saldo only</span>
+            </div>
+
+            <div class="admin-user-toolbar-v31">
+                <div class="admin-user-search-v31">
+                    <input id="adminUserSearch" placeholder="Cari username atau email...">
+                    <button type="button" aria-label="Cari">🔍</button>
+                </div>
+                <div class="admin-user-note-v31">
+                    <strong>Guard aktif:</strong> admin tidak bisa mengurangi saldo user dari UI maupun backend.
+                </div>
+            </div>
+
+            <div class="mp-table-wrap admin-user-table-wrap-v31">
+                <table class="mp-table admin-user-table-v31" id="adminUsersTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>User</th>
+                            <th>Saldo Aktif</th>
+                            <th>Role / Status</th>
+                            <th>Update Akun</th>
+                            <th>Tambah Saldo Manual</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <% userList.forEach(u=>{ %>
+                        <tr class="admin-user-row" data-search="<%= String((u.username||'')+' '+(u.email||'')).toLowerCase() %>">
+                            <td><span class="mp-id">#<%= u.id %></span></td>
+                            <td>
+                                <div class="admin-user-cell-v31">
+                                    <div class="admin-user-avatar-v31"><%= String(u.username || u.email || '?').slice(0,1).toUpperCase() %></div>
+                                    <div>
+                                        <strong><%= u.username %></strong>
+                                        <small><%= u.email %></small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="user-saldo-pill user-saldo-pill-v31">
+                                    <span>Saldo</span>
+                                    <strong>Rp <%= Number(u.saldo||0).toLocaleString('id-ID') %></strong>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="admin-user-role-v31">
+                                    <span class="role-pill-v31"><%= u.role %></span>
+                                    <%- include('partials/status',{status:u.status}) %>
+                                </div>
+                            </td>
+                            <td>
+                                <form action="/admin/users/update" method="POST" class="inline-form admin-account-form-v31">
+                                    <input type="hidden" name="id" value="<%= u.id %>">
+                                    <select name="role" aria-label="Role user">
+                                        <option value="user" <%= u.role==='user'?'selected':'' %>>user</option>
+                                        <option value="admin" <%= u.role==='admin'?'selected':'' %>>admin</option>
+                                    </select>
+                                    <select name="status" aria-label="Status user">
+                                        <option value="active" <%= u.status==='active'?'selected':'' %>>active</option>
+                                        <option value="inactive" <%= u.status==='inactive'?'selected':'' %>>inactive</option>
+                                    </select>
+                                    <button class="mp-btn small">Simpan</button>
+                                </form>
+                            </td>
+                            <td>
+                                <form action="/admin/users/balance" method="POST" class="inline-form balance-inline-form balance-add-only-form-v31" onsubmit="return confirm('Tambahkan saldo ke user ini?')">
+                                    <input type="hidden" name="id" value="<%= u.id %>">
+                                    <input type="hidden" name="action" value="add">
+                                    <input type="number" name="amount" min="1" placeholder="Nominal saldo" required>
+                                    <input type="text" name="note" placeholder="Catatan, contoh: deposit manual">
+                                    <button class="mp-btn small green">Proses</button>
+                                </form>
+                            </td>
+                        </tr>
+                    <% }) %>
+                    <% if(!userList.length){ %>
+                        <tr><td colspan="6" class="empty-cell">Belum ada user terdaftar.</td></tr>
+                    <% } %>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
 </div>
-<section class="mp-card user-balance-admin-card"><div class="mp-card-head"><div><h2>👥 User & Saldo Deposit</h2><p>Saldo di kolom ini adalah saldo aktif user. Deposit yang sudah disetujui admin otomatis menambah saldo ini.</p></div></div>
-<div class="service-toolbar"><div class="mp-search service-admin-search compact"><input id="adminUserSearch" placeholder="Cari username/email..."><button type="button">🔍</button></div></div>
-<div class="mp-table-wrap"><table class="mp-table" id="adminUsersTable"><thead><tr><th>ID</th><th>User</th><th>Saldo Aktif</th><th>Role/Status</th><th>Update Akun</th><th>Tambah/Kurangi Saldo</th></tr></thead><tbody><% userList.forEach(u=>{ %><tr class="admin-user-row" data-search="<%= String((u.username||'')+' '+(u.email||'')).toLowerCase() %>"><td><span class="mp-id">#<%= u.id %></span></td><td><strong><%= u.username %></strong><small class="service-row-sub"><%= u.email %></small></td><td><div class="user-saldo-pill"><span>Saldo</span><strong>Rp <%= Number(u.saldo||0).toLocaleString('id-ID') %></strong></div></td><td><%= u.role %><br><%- include('partials/status',{status:u.status}) %></td><td><form action="/admin/users/update" method="POST" class="inline-form"><input type="hidden" name="id" value="<%= u.id %>"><select name="role"><option value="user" <%= u.role==='user'?'selected':'' %>>user</option><option value="admin" <%= u.role==='admin'?'selected':'' %>>admin</option></select><select name="status"><option value="active" <%= u.status==='active'?'selected':'' %>>active</option><option value="inactive" <%= u.status==='inactive'?'selected':'' %>>inactive</option></select><button class="mp-btn small">Simpan</button></form></td><td><form action="/admin/users/balance" method="POST" class="inline-form balance-inline-form" onsubmit="return confirm('Proses perubahan saldo user ini?')"><input type="hidden" name="id" value="<%= u.id %>"><select name="action"><option value="add">Tambah Saldo</option><option value="subtract">Kurangi Saldo</option></select><input type="number" name="amount" min="1" placeholder="Nominal" required><input type="text" name="note" placeholder="Catatan, contoh: koreksi deposit"><button class="mp-btn small green">Proses Saldo</button></form></td></tr><% }) %></tbody></table></div></section>
-</main></div>
 <script>
 const userSearch = document.getElementById('adminUserSearch');
 userSearch?.addEventListener('input', () => {
@@ -26,4 +141,5 @@ userSearch?.addEventListener('input', () => {
     });
 });
 </script>
-</body></html>
+</body>
+</html>

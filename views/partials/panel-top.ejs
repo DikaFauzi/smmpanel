@@ -4,7 +4,49 @@
         <% if(typeof subtitle !== 'undefined' && subtitle){ %><p><%= subtitle %></p><% } %>
     </div>
     <div class="mp-top-actions">
-        <button type="button" class="mp-icon-btn" title="Mode">☾</button>
+        <button type="button" class="mp-icon-btn dk-theme-toggle" title="Mode malam" data-theme-toggle aria-label="Ganti mode tampilan"><span class="theme-icon">☾</span><span class="theme-label">Malam</span></button>
         <a href="/account" class="mp-avatar" title="Akun"><%= (user && user.username ? user.username[0] : 'D').toUpperCase() %></a>
     </div>
 </header>
+
+<script>
+(function(){
+    if(window.__DK_PANEL_THEME_TOGGLE_V36__) return;
+    window.__DK_PANEL_THEME_TOGGLE_V36__ = true;
+
+    const storageKey = 'dk-panel-theme';
+    const root = document.documentElement;
+
+    function applyTheme(theme){
+        const isDark = theme === 'dark';
+        root.classList.toggle('dk-dark-mode', isDark);
+        root.dataset.theme = isDark ? 'dark' : 'light';
+        if(document.body){
+            document.body.classList.toggle('dk-dark-mode', isDark);
+            document.body.dataset.theme = isDark ? 'dark' : 'light';
+        }
+        document.querySelectorAll('[data-theme-toggle]').forEach(btn => {
+            btn.innerHTML = isDark
+                ? '<span class="theme-icon">☀</span><span class="theme-label">Siang</span>'
+                : '<span class="theme-icon">☾</span><span class="theme-label">Malam</span>';
+            btn.setAttribute('aria-pressed', isDark ? 'true' : 'false');
+            btn.setAttribute('title', isDark ? 'Mode siang' : 'Mode malam');
+        });
+    }
+
+    let saved = localStorage.getItem(storageKey);
+    if(saved !== 'dark' && saved !== 'light') saved = 'light';
+    applyTheme(saved);
+
+    document.addEventListener('click', function(event){
+        const button = event.target.closest('[data-theme-toggle]');
+        if(!button) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const current = document.body && document.body.classList.contains('dk-dark-mode') ? 'dark' : 'light';
+        const next = current === 'dark' ? 'light' : 'dark';
+        localStorage.setItem(storageKey, next);
+        applyTheme(next);
+    }, true);
+})();
+</script>

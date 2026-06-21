@@ -1,1 +1,107 @@
-<!DOCTYPE html><html><head><title>Refill Admin - <%= appName %></title><link rel="stylesheet" href="/style.css"></head><body class="mp-app-body"><div class="layout"><%- include('partials/admin-sidebar', { active: 'refills' }) %><main class="content"><div class="topbar"><div><h1>Request Refill</h1><p>Kelola refill manual/auto dari user.</p></div></div><div class="table-card"><table><thead><tr><th>ID</th><th>User</th><th>Order</th><th>Layanan</th><th>Target</th><th>Alasan</th><th>Status</th><th>Aksi</th></tr></thead><tbody><% refills.forEach(item=>{ %><tr><td>#<%= item.id %></td><td><%= item.username %><br><span class="muted"><%= item.email %></span></td><td>#<%= item.order_id %></td><td><%= item.service_name %></td><td><%= item.target %></td><td><%= item.reason || '-' %></td><td><span class="status <%= item.status %>"><%= item.status %></span></td><td><form action="/admin/refills/update" method="POST" class="inline-form"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="id" value="<%= item.id %>"><select name="status"><% ['Pending','Processing','Completed','Rejected'].forEach(s=>{ %><option value="<%= s %>" <%= item.status===s?'selected':'' %>><%= s %></option><% }) %></select><input name="admin_note" placeholder="Catatan" value="<%= item.admin_note || '' %>"><button type="submit">Update</button></form></td></tr><% }) %></tbody></table></div></main></div></body></html>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Refill - <%= appName || 'DK PANEL' %></title>
+    <%- include('partials/panel-head') %>
+</head>
+<body class="mp-body">
+<%
+const refillList = refills || [];
+function fmtDate(value){
+    if(!value) return '-';
+    try { return new Date(value).toLocaleString('id-ID'); } catch(e){ return value; }
+}
+%>
+<div class="mp-layout">
+    <%- include('partials/admin-sidebar') %>
+    <main class="mp-main refill-page-v23">
+        <%- include('partials/panel-top', {title:'Admin Refill', subtitle:'Kelola request refill dari user.'}) %>
+
+
+        <% if (typeof pageError !== 'undefined' && pageError) { %>
+            <div class="mp-alert refill-page-alert-v24"><%= pageError %></div>
+        <% } %>
+        <section class="mp-card refill-list-card-v23">
+            <div class="mp-card-head refill-card-head-v23">
+                <h2>♻ Daftar Request Refill</h2>
+                <span class="mp-chip"><%= refillList.length %> request</span>
+            </div>
+            <div class="refill-filter-panel-v23">
+                <select id="refillStatusFilter">
+                    <option value="">Semua Status</option>
+                    <option value="proses">Proses</option>
+                    <option value="selesai">Selesai</option>
+                    <option value="ditolak">Ditolak</option>
+                </select>
+                <div class="mp-search refill-search-v23">
+                    <input id="refillSearch" placeholder="Cari user, order, layanan, target...">
+                    <button type="button">🔍</button>
+                </div>
+            </div>
+            <div class="mp-table-wrap refill-table-wrap-v23">
+                <table class="mp-table refill-table-v23">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Dibuat</th>
+                            <th>User</th>
+                            <th>ID Pesanan</th>
+                            <th>Layanan</th>
+                            <th>Target</th>
+                            <th>Status</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <% if(!refillList.length){ %>
+                        <tr><td colspan="8" class="empty-cell">Belum ada request refill.</td></tr>
+                    <% } %>
+                    <% refillList.forEach(item => { %>
+                        <tr class="refill-row-v23" data-status="<%= String(item.status || '').toLowerCase() %>" data-search="<%= String((item.id||'')+' '+(item.order_id||'')+' '+(item.username||'')+' '+(item.email||'')+' '+(item.service_name||'')+' '+(item.target||'')).toLowerCase() %>">
+                            <td><%= item.id %></td>
+                            <td><%= fmtDate(item.created_at) %></td>
+                            <td><strong><%= item.username || '-' %></strong><br><small><%= item.email || '-' %></small></td>
+                            <td><%= item.order_id %></td>
+                            <td><%= item.service_name || '-' %></td>
+                            <td class="target-cell"><%= item.target || '-' %></td>
+                            <td><%- include('partials/status',{status:item.status}) %></td>
+                            <td>
+                                <form action="/admin/refills/update" method="POST" class="inline-form refill-admin-action-v23">
+                                    <input type="hidden" name="id" value="<%= item.id %>">
+                                    <select name="status">
+                                        <option value="Proses" <%= item.status==='Proses'?'selected':'' %>>Proses</option>
+                                        <option value="Selesai" <%= item.status==='Selesai'?'selected':'' %>>Selesai</option>
+                                        <option value="Ditolak" <%= item.status==='Ditolak'?'selected':'' %>>Ditolak</option>
+                                    </select>
+                                    <input name="admin_note" value="<%= item.admin_note || '' %>" placeholder="Catatan admin">
+                                    <button class="mp-btn small">Simpan</button>
+                                </form>
+                            </td>
+                        </tr>
+                    <% }) %>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+</div>
+<script>
+(function(){
+    const statusFilter = document.getElementById('refillStatusFilter');
+    const searchInput = document.getElementById('refillSearch');
+    const rows = Array.from(document.querySelectorAll('.refill-row-v23'));
+    function applyFilters(){
+        const status = (statusFilter?.value || '').toLowerCase();
+        const keyword = (searchInput?.value || '').toLowerCase().trim();
+        rows.forEach(row => {
+            const okStatus = !status || row.dataset.status === status;
+            const okSearch = !keyword || row.dataset.search.includes(keyword);
+            row.style.display = okStatus && okSearch ? '' : 'none';
+        });
+    }
+    statusFilter?.addEventListener('change', applyFilters);
+    searchInput?.addEventListener('input', applyFilters);
+})();
+</script>
+</body>
+</html>

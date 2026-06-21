@@ -1,4 +1,306 @@
-<!DOCTYPE html><html><head><title>Admin Order - <%= appName || 'DK PANEL' %></title><%- include('partials/panel-head') %></head><body class="mp-body"><div class="mp-layout"><%- include('partials/admin-sidebar') %><main class="mp-main"><%- include('partials/panel-top', {title:'Admin Order', subtitle:'Kelola semua order user.'}) %>
-<div class="mp-stat-grid"><div class="mp-stat"><span>👥</span><p>Total User</p><strong><%= Number(stats.users.total_users||0).toLocaleString('id-ID') %></strong></div><div class="mp-stat"><span>🛒</span><p>Total Order</p><strong><%= Number(stats.orders.total_orders||0).toLocaleString('id-ID') %></strong></div><div class="mp-stat"><span>▣</span><p>Deposit Pending</p><strong><%= Number(stats.deposits.pending_deposits||0).toLocaleString('id-ID') %></strong></div></div>
-<section class="mp-card"><div class="mp-card-head"><h2>🛒 Pesanan</h2></div><div class="mp-filter-grid"><input placeholder="Filter user / email"><select><option>Status</option><option>Pending</option><option>Processing</option><option>Completed</option><option>Canceled</option></select><div class="mp-search"><input placeholder="Cari order..."><button>🔍</button></div></div><div class="mp-table-wrap"><table class="mp-table"><thead><tr><th>ID</th><th>User</th><th>Layanan</th><th>Target</th><th>Jumlah</th><th>Total</th><th>Status</th><th>Aksi</th></tr></thead><tbody><% if((orders||[]).length===0){ %><tr><td colspan="8" class="empty-cell">Belum ada order.</td></tr><% } %><% (orders||[]).forEach(order=>{ %><tr><td>#<%= order.id %></td><td><b><%= order.username %></b><br><small><%= order.email %></small></td><td><%= order.nama %><br><small><%= order.kategori %></small></td><td class="target-cell"><%= order.target %></td><td><%= Number(order.jumlah||0).toLocaleString('id-ID') %></td><td>Rp <%= Number(order.total||0).toLocaleString('id-ID') %></td><td><%- include('partials/status',{status:order.status}) %></td><td><form action="/admin/order/update" method="POST" class="inline-form"><input type="hidden" name="id" value="<%= order.id %>"><select name="status"><% ['Pending','Processing','Completed','Canceled'].forEach(st=>{ %><option value="<%= st %>" <%= order.status===st?'selected':'' %>><%= st %></option><% }) %></select><button class="mp-btn small" type="submit">Simpan</button></form></td></tr><% }) %></tbody></table></div></section>
-</main></div></body></html>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Order - <%= appName || 'DK PANEL' %></title>
+    <%- include('partials/panel-head') %>
+</head>
+<body class="mp-body">
+<%
+const orderList = orders || [];
+const totalOrder = Number((stats && stats.orders && stats.orders.total_orders) || orderList.length || 0);
+const pendingOrder = Number((stats && stats.orders && stats.orders.pending_orders) || orderList.filter(o => String(o.status || '').toLowerCase() === 'pending').length || 0);
+const processingOrder = Number((stats && stats.orders && stats.orders.processing_orders) || orderList.filter(o => String(o.status || '').toLowerCase() === 'processing').length || 0);
+const completedOrder = Number((stats && stats.orders && stats.orders.completed_orders) || orderList.filter(o => ['completed','success','sukses'].includes(String(o.status || '').toLowerCase())).length || 0);
+const canceledOrder = Number((stats && stats.orders && stats.orders.canceled_orders) || orderList.filter(o => ['canceled','cancelled','error'].includes(String(o.status || '').toLowerCase())).length || 0);
+const totalValue = Number((stats && stats.orders && stats.orders.total_order_value) || orderList.reduce((sum, o) => sum + Number(o.total || 0), 0));
+const pendingDeposit = Number((stats && stats.deposits && stats.deposits.pending_deposits) || 0);
+function formatDate(value){
+    if(!value) return '-';
+    try { return new Date(value).toLocaleString('id-ID'); } catch(e) { return String(value); }
+}
+%>
+<div class="mp-layout">
+    <%- include('partials/admin-sidebar') %>
+    <main class="mp-main admin-order-page-v27">
+        <%- include('partials/panel-top', {title:'Admin Order', subtitle:'Kelola semua permintaan order user, update status, dan cek detail target.'}) %>
+
+        <section class="admin-order-summary-grid-v27">
+            <article class="admin-order-summary-card-v27">
+                <span class="summary-icon-v27 blue">🛒</span>
+                <div>
+                    <p>Total Order</p>
+                    <strong><%= totalOrder.toLocaleString('id-ID') %></strong>
+                    <small>Semua pesanan user.</small>
+                </div>
+            </article>
+            <article class="admin-order-summary-card-v27">
+                <span class="summary-icon-v27 cyan">⚙</span>
+                <div>
+                    <p>Diproses</p>
+                    <strong><%= processingOrder.toLocaleString('id-ID') %></strong>
+                    <small>Butuh monitoring admin.</small>
+                </div>
+            </article>
+            <article class="admin-order-summary-card-v27">
+                <span class="summary-icon-v27 green">✓</span>
+                <div>
+                    <p>Selesai</p>
+                    <strong><%= completedOrder.toLocaleString('id-ID') %></strong>
+                    <small>Order berhasil.</small>
+                </div>
+            </article>
+            <article class="admin-order-summary-card-v27">
+                <span class="summary-icon-v27 orange">▣</span>
+                <div>
+                    <p>Deposit Pending</p>
+                    <strong><%= pendingDeposit.toLocaleString('id-ID') %></strong>
+                    <small>Menunggu approval.</small>
+                </div>
+            </article>
+        </section>
+
+        <section class="mp-card admin-order-card-v27">
+            <div class="mp-card-head admin-order-head-v27">
+                <div>
+                    <h2>🛒 Pesanan</h2>
+                    <p>Alur manual: user membuat pesanan, admin memantau dan mengubah status sesuai progres pengerjaan.</p>
+                </div>
+                <span class="mp-chip"><span id="visibleOrderCount"><%= orderList.length %></span> order tampil</span>
+            </div>
+
+            <div class="admin-order-toolbar-v27">
+                <div class="admin-order-filter-row-v27">
+                    <input id="adminOrderUserFilter" placeholder="Filter user / email">
+                    <select id="adminOrderStatusFilter">
+                        <option value="">Semua Status</option>
+                        <option value="pending">Pending</option>
+                        <option value="processing">Processing</option>
+                        <option value="completed">Completed</option>
+                        <option value="canceled">Canceled</option>
+                    </select>
+                    <div class="mp-search admin-order-search-v27">
+                        <input id="adminOrderSearch" placeholder="Cari ID / layanan / target...">
+                        <button type="button">🔍</button>
+                    </div>
+                </div>
+                <div class="admin-order-filter-row-v27 secondary">
+                    <button type="button" class="mp-btn mp-btn-soft small" data-quick-status="">Semua</button>
+                    <button type="button" class="mp-btn mp-btn-soft small" data-quick-status="pending">Pending</button>
+                    <button type="button" class="mp-btn mp-btn-soft small" data-quick-status="processing">Processing</button>
+                    <button type="button" class="mp-btn mp-btn-soft small" data-quick-status="completed">Completed</button>
+                    <button type="button" class="mp-btn mp-btn-soft small" data-quick-status="canceled">Canceled</button>
+                    <button type="button" class="mp-btn mp-btn-soft small" id="adminOrderResetFilter">Reset Filter</button>
+                </div>
+            </div>
+
+            <div class="admin-order-metric-strip-v27">
+                <div><span>Pending</span><b><%= pendingOrder.toLocaleString('id-ID') %></b></div>
+                <div><span>Processing</span><b><%= processingOrder.toLocaleString('id-ID') %></b></div>
+                <div><span>Canceled</span><b><%= canceledOrder.toLocaleString('id-ID') %></b></div>
+                <div><span>Total Nilai</span><b>Rp <%= totalValue.toLocaleString('id-ID') %></b></div>
+            </div>
+
+            <div class="mp-table-wrap admin-order-table-wrap-v27">
+                <table class="mp-table admin-order-table-v27" id="adminOrderTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>User</th>
+                            <th>Dibuat</th>
+                            <th>Layanan</th>
+                            <th>Target</th>
+                            <th>Jumlah</th>
+                            <th>Total</th>
+                            <th>Status</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <% if(orderList.length === 0){ %>
+                        <tr><td colspan="9" class="empty-cell">Belum ada order.</td></tr>
+                    <% } %>
+                    <% orderList.forEach(order => { 
+                        const statusLower = String(order.status || '').toLowerCase();
+                        const searchText = String('#' + order.id + ' ' + (order.username||'') + ' ' + (order.email||'') + ' ' + (order.nama||'') + ' ' + (order.kategori||'') + ' ' + (order.target||'')).toLowerCase();
+                        const userText = String((order.username||'') + ' ' + (order.email||'')).toLowerCase();
+                    %>
+                        <tr class="admin-order-row-v27" data-status="<%= statusLower %>" data-search="<%= searchText %>" data-user="<%= userText %>" data-id="<%= order.id %>">
+                            <td><span class="admin-order-id-v27">#<%= order.id %></span></td>
+                            <td>
+                                <strong><%= order.username || '-' %></strong>
+                                <small><%= order.email || '-' %></small>
+                            </td>
+                            <td class="admin-order-date-v27"><%= formatDate(order.created_at || order.createdAt) %></td>
+                            <td class="admin-order-service-v27">
+                                <strong><%= order.nama || '-' %></strong>
+                                <small><%= order.kategori || '-' %></small>
+                            </td>
+                            <td class="target-cell admin-order-target-v27"><%= order.target || '-' %></td>
+                            <td><%= Number(order.jumlah || 0).toLocaleString('id-ID') %></td>
+                            <td><strong>Rp <%= Number(order.total || 0).toLocaleString('id-ID') %></strong></td>
+                            <td><%- include('partials/status',{status:order.status}) %></td>
+                            <td>
+                                <div class="admin-order-actions-v27">
+                                    <button type="button" class="mp-btn small mp-btn-soft js-admin-order-detail"
+                                        data-id="<%= order.id %>"
+                                        data-username="<%= String(order.username || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;') %>"
+                                        data-email="<%= String(order.email || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;') %>"
+                                        data-service="<%= String(order.nama || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;') %>"
+                                        data-kategori="<%= String(order.kategori || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;') %>"
+                                        data-target="<%= String(order.target || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;') %>"
+                                        data-jumlah="<%= Number(order.jumlah || 0) %>"
+                                        data-total="<%= Number(order.total || 0) %>"
+                                        data-status="<%= String(order.status || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;') %>"
+                                        data-created_at="<%= String(order.created_at || order.createdAt || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;') %>"
+                                        data-refunded_at="<%= String(order.refunded_at || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;') %>">Detail</button>
+                                    <form action="/admin/order/update" method="POST" class="admin-order-status-form-v27">
+                                        <input type="hidden" name="id" value="<%= order.id %>">
+                                        <select name="status">
+                                            <% ['Pending','Processing','Completed','Canceled'].forEach(st=>{ %>
+                                                <option value="<%= st %>" <%= String(order.status || '').toLowerCase() === st.toLowerCase() ? 'selected' : '' %>><%= st %></option>
+                                            <% }) %>
+                                        </select>
+                                        <button class="mp-btn small" type="submit">Simpan</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    <% }) %>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+</div>
+
+<div class="mp-modal-backdrop" id="adminOrderDetailModal" hidden>
+    <div class="mp-modal-card wide" role="dialog" aria-modal="true" aria-labelledby="adminOrderDetailTitle">
+        <div class="mp-modal-head">
+            <h2 id="adminOrderDetailTitle">Detail Order</h2>
+            <button type="button" class="mp-modal-close" id="adminOrderModalClose">×</button>
+        </div>
+        <div class="mp-modal-body" id="adminOrderDetailBody"></div>
+    </div>
+</div>
+
+<script>
+const adminOrders = <%- JSON.stringify(orderList.map(order => ({
+    id: order.id,
+    username: order.username || '',
+    email: order.email || '',
+    service: order.nama || '',
+    kategori: order.kategori || '',
+    target: order.target || '',
+    jumlah: Number(order.jumlah || 0),
+    total: Number(order.total || 0),
+    status: order.status || '',
+    created_at: order.created_at || order.createdAt || '',
+    refunded_at: order.refunded_at || ''
+}))).replace(/</g,'\\u003c') %>;
+(function(){
+    const currency = new Intl.NumberFormat('id-ID');
+    const rows = Array.from(document.querySelectorAll('.admin-order-row-v27'));
+    const userInput = document.getElementById('adminOrderUserFilter');
+    const statusInput = document.getElementById('adminOrderStatusFilter');
+    const searchInput = document.getElementById('adminOrderSearch');
+    const counter = document.getElementById('visibleOrderCount');
+    const modal = document.getElementById('adminOrderDetailModal');
+    const modalBody = document.getElementById('adminOrderDetailBody');
+    const modalTitle = document.getElementById('adminOrderDetailTitle');
+
+    function escapeHtml(value){
+        return String(value || '').replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[char]));
+    }
+    function formatDate(value){
+        if(!value) return '-';
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString('id-ID');
+    }
+    function applyFilter(){
+        const userKeyword = (userInput.value || '').trim().toLowerCase();
+        const status = (statusInput.value || '').trim().toLowerCase();
+        const keyword = (searchInput.value || '').trim().toLowerCase();
+        let visible = 0;
+        rows.forEach(row => {
+            const rowStatus = row.dataset.status || '';
+            const rowUser = row.dataset.user || '';
+            const rowSearch = row.dataset.search || '';
+            const matchUser = !userKeyword || rowUser.includes(userKeyword);
+            const matchStatus = !status || rowStatus === status;
+            const matchSearch = !keyword || rowSearch.includes(keyword);
+            const show = matchUser && matchStatus && matchSearch;
+            row.style.display = show ? '' : 'none';
+            if(show) visible += 1;
+        });
+        counter.textContent = visible;
+    }
+    userInput.addEventListener('input', applyFilter);
+    statusInput.addEventListener('change', applyFilter);
+    searchInput.addEventListener('input', applyFilter);
+    document.querySelectorAll('[data-quick-status]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            statusInput.value = btn.dataset.quickStatus || '';
+            applyFilter();
+        });
+    });
+    document.getElementById('adminOrderResetFilter').addEventListener('click', () => {
+        userInput.value = '';
+        statusInput.value = '';
+        searchInput.value = '';
+        applyFilter();
+    });
+
+    function openModal(order){
+        modalTitle.textContent = 'Detail Order #' + order.id;
+        modalBody.innerHTML = `
+            <div class="admin-order-detail-grid-v27">
+                <div class="modal-field"><b>User</b><p>${escapeHtml(order.username)}<br><small>${escapeHtml(order.email)}</small></p></div>
+                <div class="modal-field"><b>Status</b><p>${escapeHtml(order.status || '-')}</p></div>
+                <div class="modal-field"><b>Dibuat</b><p>${escapeHtml(formatDate(order.created_at))}</p></div>
+                <div class="modal-field"><b>Total</b><p><strong>Rp ${currency.format(order.total || 0)}</strong></p></div>
+                <div class="modal-field"><b>Layanan</b><p>${escapeHtml(order.service)}<br><small>${escapeHtml(order.kategori)}</small></p></div>
+                <div class="modal-field"><b>Jumlah</b><p>${currency.format(order.jumlah || 0)}</p></div>
+                <div class="modal-field full"><b>Target</b><p class="break-text">${escapeHtml(order.target || '-')}</p></div>
+                <div class="modal-field full"><b>Catatan Sistem</b><p>${order.refunded_at ? 'Order ini sudah pernah direfund pada ' + escapeHtml(formatDate(order.refunded_at)) : 'Belum ada refund tercatat.'}</p></div>
+            </div>
+        `;
+        modal.hidden = false;
+        document.body.classList.add('modal-open');
+    }
+    function datasetOrder(button){
+        return {
+            id: button.dataset.id || '',
+            username: button.dataset.username || '',
+            email: button.dataset.email || '',
+            service: button.dataset.service || '',
+            kategori: button.dataset.kategori || '',
+            target: button.dataset.target || '',
+            jumlah: Number(button.dataset.jumlah || 0),
+            total: Number(button.dataset.total || 0),
+            status: button.dataset.status || '',
+            created_at: button.dataset.created_at || '',
+            refunded_at: button.dataset.refunded_at || ''
+        };
+    }
+
+    document.addEventListener('click', (event) => {
+        const btn = event.target.closest('.js-admin-order-detail');
+        if(!btn) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const orderFromJson = Array.isArray(adminOrders) ? adminOrders.find(item => String(item.id) === String(btn.dataset.id)) : null;
+        openModal(orderFromJson || datasetOrder(btn));
+    });
+
+    function closeModal(){
+        modal.hidden = true;
+        document.body.classList.remove('modal-open');
+    }
+    document.getElementById('adminOrderModalClose').addEventListener('click', closeModal);
+    modal.addEventListener('click', (event) => { if(event.target === modal) closeModal(); });
+    document.addEventListener('keydown', (event) => { if(event.key === 'Escape' && !modal.hidden) closeModal(); });
+    applyFilter();
+})();
+</script>
+</body>
+</html>

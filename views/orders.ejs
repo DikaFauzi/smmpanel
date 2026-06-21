@@ -1,12 +1,369 @@
 <!DOCTYPE html>
 <html>
-<head><title>Riwayat Pemesanan - <%= appName || 'DK PANEL' %></title><%- include('partials/panel-head') %></head>
-<body class="mp-body"><div class="mp-layout"><%- include('partials/user-sidebar') %><main class="mp-main">
-<%- include('partials/panel-top', {title:'Pesanan', subtitle:'Pantau status dan riwayat order.'}) %>
-<div class="mp-stat-grid"><div class="mp-stat"><span>🛒</span><p>Semua Pesanan</p><strong><%= (orders||[]).length.toLocaleString('id-ID') %></strong></div><div class="mp-stat"><span>▣</span><p>Total Belanja</p><strong>Rp <%= (orders||[]).reduce((a,o)=>a+Number(o.total||0),0).toLocaleString('id-ID') %></strong></div></div>
-<section class="mp-card"><div class="mp-card-head"><h2>🛒 Pesanan</h2></div><div class="mp-filter-grid"><button class="mp-btn" type="button">Copy ID Pesanan</button><input placeholder="2026"><select><option>Status</option></select><input class="span-2" placeholder="Filter Layanan"><div class="mp-search"><input id="orderSearch" placeholder="Cari..."><button>🔍</button></div></div>
-<div class="mp-table-wrap"><table class="mp-table"><thead><tr><th>ID</th><th>Dibuat</th><th>Layanan</th><th>Target</th><th>Jumlah</th><th>Biaya</th><th>Status</th><th>Aksi</th></tr></thead><tbody>
-<% if((orders||[]).length===0){ %><tr><td colspan="8" class="empty-cell">Belum ada order.</td></tr><% } %>
-<% (orders||[]).forEach(order=>{ %><tr><td><span class="mp-id">#<%= order.id %></span></td><td><%= order.created_at ? new Date(order.created_at).toLocaleString('id-ID') : '-' %></td><td><%= order.nama %></td><td class="target-cell"><%= order.target %></td><td><%= Number(order.jumlah||0).toLocaleString('id-ID') %></td><td>Rp <%= Number(order.total||0).toLocaleString('id-ID') %></td><td><%- include('partials/status',{status:order.status}) %></td><td><button class="mp-btn small">Detail</button></td></tr><% }) %>
-</tbody></table></div></section>
-</main></div></body></html>
+<head>
+    <title>Riwayat Pemesanan - <%= appName || 'DK PANEL' %></title>
+    <%- include('partials/panel-head') %>
+</head>
+<body class="mp-body">
+<%
+const orderList = orders || [];
+const totalOrders = orderList.length;
+const totalSpend = orderList.reduce((a, o) => a + Number(o.total || 0), 0);
+const successOrders = orderList.filter(o => ['success','sukses','completed','complete','approved'].includes(String(o.status || '').toLowerCase())).length;
+const processingOrders = orderList.filter(o => ['processing','process','pending'].includes(String(o.status || '').toLowerCase())).length;
+const years = [...new Set(orderList.map(o => o.created_at ? new Date(o.created_at).getFullYear() : '').filter(Boolean))].sort((a,b)=>b-a);
+const serviceOptions = [...new Set(orderList.map(o => (o.nama || o.service_name || '').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+function formatDate(value){
+    if(!value) return '-';
+    try { return new Date(value).toLocaleString('id-ID'); } catch(e){ return '-'; }
+}
+function safeAttr(value){ return String(value || '').replace(/"/g, '&quot;').replace(/\r?\n/g, ' '); }
+%>
+<div class="mp-layout">
+    <%- include('partials/user-sidebar') %>
+    <main class="mp-main orders-page-v19">
+        <%- include('partials/panel-top', {title:'Riwayat Pemesanan', subtitle:'Pantau semua pesanan, salin ID, cari target, dan lihat detail order.'}) %>
+
+        <section class="mp-stat-grid order-stat-grid">
+            <article class="mp-stat order-stat-card">
+                <span>🛒</span>
+                <div>
+                    <p>Semua Pesanan</p>
+                    <strong><%= totalOrders.toLocaleString('id-ID') %></strong>
+                    <small>Total order yang pernah dibuat.</small>
+                </div>
+            </article>
+            <article class="mp-stat order-stat-card">
+                <span>▣</span>
+                <div>
+                    <p>Total Belanja</p>
+                    <strong>Rp <%= totalSpend.toLocaleString('id-ID') %></strong>
+                    <small>Akumulasi biaya semua pesanan.</small>
+                </div>
+            </article>
+            <article class="mp-stat order-stat-card compact-on-wide">
+                <span>✓</span>
+                <div>
+                    <p>Success</p>
+                    <strong><%= successOrders.toLocaleString('id-ID') %></strong>
+                    <small>Pesanan selesai/sukses.</small>
+                </div>
+            </article>
+            <article class="mp-stat order-stat-card compact-on-wide">
+                <span>↻</span>
+                <div>
+                    <p>Diproses</p>
+                    <strong><%= processingOrders.toLocaleString('id-ID') %></strong>
+                    <small>Pending atau processing.</small>
+                </div>
+            </article>
+        </section>
+
+        <section class="mp-card order-history-card">
+            <div class="mp-card-head order-card-head">
+                <div>
+                    <h2>🛒 Pesanan</h2>
+                    <p>Gunakan filter untuk mencari order tertentu. Centang beberapa pesanan lalu klik copy ID.</p>
+                </div>
+                <span class="mp-chip"><span id="visibleOrderCount"><%= totalOrders %></span> pesanan</span>
+            </div>
+
+            <div class="order-filter-panel">
+                <div class="order-filter-top">
+                    <button class="mp-btn order-copy-btn" id="copySelectedOrderIds" type="button">📋 Copy ID Pesanan</button>
+                    <select id="orderYearFilter">
+                        <option value="">Semua Tahun</option>
+                        <% years.forEach(y => { %>
+                            <option value="<%= y %>"><%= y %></option>
+                        <% }) %>
+                    </select>
+                    <select id="orderStatusFilter">
+                        <option value="">Status</option>
+                        <option value="pending">Pending</option>
+                        <option value="processing">Processing</option>
+                        <option value="success">Success / Completed</option>
+                        <option value="error">Error / Failed</option>
+                        <option value="canceled">Canceled</option>
+                    </select>
+                </div>
+                <div class="order-filter-mid">
+                    <select id="orderServiceFilter">
+                        <option value="">Filter Layanan</option>
+                        <% serviceOptions.forEach(name => { %>
+                            <option value="<%= safeAttr(name).toLowerCase() %>"><%= name %></option>
+                        <% }) %>
+                    </select>
+                    <button type="button" class="mp-btn small order-filter-button" id="resetOrderFilters">Reset</button>
+                </div>
+                <div class="order-filter-bottom">
+                    <select id="orderFieldFilter">
+                        <option value="all">ID / Layanan / Target</option>
+                        <option value="id">ID</option>
+                        <option value="service">Layanan</option>
+                        <option value="target">Target</option>
+                    </select>
+                    <div class="mp-search order-search-box">
+                        <input id="orderSearch" placeholder="Cari...">
+                        <button type="button">🔍</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mp-table-wrap order-table-wrap">
+                <table class="mp-table order-table" id="ordersTable">
+                    <thead>
+                        <tr>
+                            <th class="check-col"><input type="checkbox" id="checkAllOrders"></th>
+                            <th>ID</th>
+                            <th>Dibuat</th>
+                            <th>Layanan</th>
+                            <th>Target</th>
+                            <th>Jumlah</th>
+                            <th>Biaya</th>
+                            <th>Jml. Awal</th>
+                            <th>Sisa</th>
+                            <th>Status</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <% if(!orderList.length){ %>
+                        <tr><td colspan="11" class="empty-cell">Belum ada order.</td></tr>
+                    <% } %>
+                    <% orderList.forEach(order=>{ 
+                        const serviceName = order.nama || order.service_name || '-';
+                        const orderStatus = String(order.status || '-');
+                        const orderStatusLower = orderStatus.toLowerCase();
+                        const createdYear = order.created_at ? new Date(order.created_at).getFullYear() : '';
+                        const initialCount = order.start_count || order.jumlah_awal || order.jml_awal || 0;
+                        const remains = order.remains || order.sisa || 0;
+                    %>
+                        <tr class="order-row"
+                            data-id="<%= order.id %>"
+                            data-year="<%= createdYear %>"
+                            data-status="<%= orderStatusLower %>"
+                            data-service="<%= safeAttr(serviceName).toLowerCase() %>"
+                            data-target="<%= safeAttr(order.target).toLowerCase() %>"
+                            data-search="<%= safeAttr(String(order.id)+' '+serviceName+' '+(order.target||'')).toLowerCase() %>"
+                            data-created="<%= safeAttr(formatDate(order.created_at)) %>"
+                            data-jumlah="<%= Number(order.jumlah||0).toLocaleString('id-ID') %>"
+                            data-total="Rp <%= Number(order.total||0).toLocaleString('id-ID') %>"
+                            data-start="<%= Number(initialCount||0).toLocaleString('id-ID') %>"
+                            data-remains="<%= Number(remains||0).toLocaleString('id-ID') %>">
+                            <td class="check-col"><input class="order-check" type="checkbox" value="<%= order.id %>"></td>
+                            <td>
+                                <div class="order-id-copy-wrap">
+                                    <span class="mp-id order-id-value"><%= order.id %></span>
+                                    <button type="button" class="order-copy-single" data-copy="<%= order.id %>" title="Copy ID">📋</button>
+                                </div>
+                            </td>
+                            <td class="order-date-cell"><%= formatDate(order.created_at) %></td>
+                            <td class="order-service-cell"><%= serviceName %></td>
+                            <td class="target-cell"><%= order.target || '-' %></td>
+                            <td><%= Number(order.jumlah||0).toLocaleString('id-ID') %></td>
+                            <td>Rp <%= Number(order.total||0).toLocaleString('id-ID') %></td>
+                            <td><%= Number(initialCount||0).toLocaleString('id-ID') %></td>
+                            <td><%= Number(remains||0).toLocaleString('id-ID') %></td>
+                            <td><%- include('partials/status',{status:order.status}) %></td>
+                            <td><button type="button" class="mp-btn small order-detail-btn">☷ Detail</button></td>
+                        </tr>
+                    <% }) %>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+</div>
+
+<div class="mp-modal-backdrop" id="orderDetailModal" hidden>
+    <div class="mp-modal-card wide" role="dialog" aria-modal="true" aria-labelledby="orderDetailTitle">
+        <div class="mp-modal-head">
+            <h2 id="orderDetailTitle">Detail Pesanan</h2>
+            <button type="button" class="mp-modal-close" data-close-modal="orderDetailModal">×</button>
+        </div>
+        <div class="mp-modal-body">
+            <div class="order-detail-modal-body" id="orderDetailBody"></div>
+        </div>
+    </div>
+</div>
+
+
+<div class="dk-rule-alert" id="dkRuleAlert" hidden>
+    <div class="dk-rule-alert-card" role="alertdialog" aria-modal="true" aria-labelledby="dkRuleAlertTitle">
+        <div class="dk-rule-alert-icon">×</div>
+        <h2 id="dkRuleAlertTitle">Whoops!</h2>
+        <p id="dkRuleAlertMessage">Setidaknya ceklis satu data.</p>
+        <button type="button" class="dk-rule-alert-ok" id="dkRuleAlertOk">☻ Okay</button>
+    </div>
+</div>
+
+<div class="copy-toast" id="copyToast" hidden>Berhasil copy ID pesanan.</div>
+
+<script>
+(function(){
+    const rows = Array.from(document.querySelectorAll('.order-row'));
+    const visibleCounter = document.getElementById('visibleOrderCount');
+    const search = document.getElementById('orderSearch');
+    const yearFilter = document.getElementById('orderYearFilter');
+    const statusFilter = document.getElementById('orderStatusFilter');
+    const serviceFilter = document.getElementById('orderServiceFilter');
+    const fieldFilter = document.getElementById('orderFieldFilter');
+    const checkAll = document.getElementById('checkAllOrders');
+    const modal = document.getElementById('orderDetailModal');
+    const modalBody = document.getElementById('orderDetailBody');
+    const copyToast = document.getElementById('copyToast');
+    const ruleAlert = document.getElementById('dkRuleAlert');
+    const ruleAlertMessage = document.getElementById('dkRuleAlertMessage');
+    const ruleAlertOk = document.getElementById('dkRuleAlertOk');
+
+    function normalizeStatus(status){
+        status = String(status || '').toLowerCase();
+        if(['completed','complete','success','sukses','approved'].includes(status)) return 'success';
+        if(['failed','error','eror','rejected'].includes(status)) return 'error';
+        if(['cancel','canceled','cancelled'].includes(status)) return 'canceled';
+        if(status.includes('process')) return 'processing';
+        if(status.includes('pending')) return 'pending';
+        return status;
+    }
+
+    function applyFilters(){
+        const q = (search?.value || '').trim().toLowerCase();
+        const year = yearFilter?.value || '';
+        const status = statusFilter?.value || '';
+        const service = serviceFilter?.value || '';
+        const field = fieldFilter?.value || 'all';
+        let visible = 0;
+
+        rows.forEach(row => {
+            let searchTarget = row.dataset.search || '';
+            if(field === 'id') searchTarget = row.dataset.id || '';
+            if(field === 'service') searchTarget = row.dataset.service || '';
+            if(field === 'target') searchTarget = row.dataset.target || '';
+
+            const matchesSearch = !q || searchTarget.includes(q);
+            const matchesYear = !year || String(row.dataset.year || '') === year;
+            const matchesStatus = !status || normalizeStatus(row.dataset.status) === status;
+            const matchesService = !service || row.dataset.service === service;
+            const show = matchesSearch && matchesYear && matchesStatus && matchesService;
+            row.style.display = show ? '' : 'none';
+            if(show) visible += 1;
+        });
+        if(visibleCounter) visibleCounter.textContent = visible;
+    }
+
+    [search, yearFilter, statusFilter, serviceFilter, fieldFilter].forEach(el => {
+        el?.addEventListener('input', applyFilters);
+        el?.addEventListener('change', applyFilters);
+    });
+
+    document.getElementById('resetOrderFilters')?.addEventListener('click', () => {
+        if(search) search.value = '';
+        if(yearFilter) yearFilter.value = '';
+        if(statusFilter) statusFilter.value = '';
+        if(serviceFilter) serviceFilter.value = '';
+        if(fieldFilter) fieldFilter.value = 'all';
+        applyFilters();
+    });
+
+    checkAll?.addEventListener('change', () => {
+        document.querySelectorAll('.order-row:not([style*="display: none"]) .order-check').forEach(cb => cb.checked = checkAll.checked);
+    });
+
+    async function copyText(text){
+        try {
+            await navigator.clipboard.writeText(text);
+        } catch(e) {
+            const temp = document.createElement('textarea');
+            temp.value = text;
+            document.body.appendChild(temp);
+            temp.select();
+            document.execCommand('copy');
+            temp.remove();
+        }
+        showToast();
+    }
+
+    function showToast(){
+        if(!copyToast) return;
+        copyToast.hidden = false;
+        clearTimeout(showToast.timer);
+        showToast.timer = setTimeout(() => copyToast.hidden = true, 1700);
+    }
+
+    function showRuleAlert(message){
+        if(!ruleAlert) {
+            alert(message || 'Data belum sesuai ketentuan.');
+            return;
+        }
+        if(ruleAlertMessage) ruleAlertMessage.textContent = message || 'Data belum sesuai ketentuan.';
+        ruleAlert.hidden = false;
+        document.body.classList.add('modal-open');
+        setTimeout(() => ruleAlertOk?.focus(), 30);
+    }
+
+    function closeRuleAlert(){
+        if(!ruleAlert) return;
+        ruleAlert.hidden = true;
+        if(!modal || modal.hidden) document.body.classList.remove('modal-open');
+    }
+
+    ruleAlertOk?.addEventListener('click', closeRuleAlert);
+    ruleAlert?.addEventListener('click', e => { if(e.target === ruleAlert) closeRuleAlert(); });
+
+    document.querySelectorAll('.order-copy-single').forEach(btn => {
+        btn.addEventListener('click', () => copyText(btn.dataset.copy || ''));
+    });
+
+    document.getElementById('copySelectedOrderIds')?.addEventListener('click', () => {
+        const selected = Array.from(document.querySelectorAll('.order-check:checked')).map(cb => cb.value);
+        if(!selected.length){
+            showRuleAlert('Setidaknya ceklis satu data.');
+            return;
+        }
+        copyText(selected.join('\n'));
+    });
+
+    function openModal(){
+        modal.hidden = false;
+        document.body.classList.add('modal-open');
+    }
+    function closeModal(){
+        modal.hidden = true;
+        document.body.classList.remove('modal-open');
+    }
+
+    document.querySelectorAll('[data-close-modal]').forEach(btn => btn.addEventListener('click', closeModal));
+    modal?.addEventListener('click', e => { if(e.target === modal) closeModal(); });
+    document.addEventListener('keydown', e => {
+        if(e.key === 'Escape' && ruleAlert && !ruleAlert.hidden) closeRuleAlert();
+        if(e.key === 'Escape' && modal && !modal.hidden) closeModal();
+    });
+
+    document.querySelectorAll('.order-detail-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const row = btn.closest('.order-row');
+            document.getElementById('orderDetailTitle').textContent = `Detail Pesanan #${row.dataset.id}`;
+            modalBody.innerHTML = `
+                <div class="modal-field order-detail-grid">
+                    <div><b>ID Pesanan</b><p>${row.dataset.id || '-'}</p></div>
+                    <div><b>Dibuat</b><p>${row.dataset.created || '-'}</p></div>
+                    <div><b>Status</b><p>${row.dataset.status || '-'}</p></div>
+                    <div><b>Biaya</b><p>${row.dataset.total || '-'}</p></div>
+                </div>
+                <div class="modal-field"><b>Layanan</b><p>${row.querySelector('.order-service-cell')?.textContent || '-'}</p></div>
+                <div class="modal-field"><b>Target</b><p class="break-text">${row.dataset.target || '-'}</p></div>
+                <div class="modal-field order-detail-grid">
+                    <div><b>Jumlah</b><p>${row.dataset.jumlah || '-'}</p></div>
+                    <div><b>Jml. Awal</b><p>${row.dataset.start || '-'}</p></div>
+                    <div><b>Sisa</b><p>${row.dataset.remains || '-'}</p></div>
+                </div>
+            `;
+            openModal();
+        });
+    });
+
+    applyFilters();
+})();
+</script>
+</body>
+</html>

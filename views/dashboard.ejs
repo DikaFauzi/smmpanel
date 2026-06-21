@@ -5,45 +5,93 @@
     <%- include('partials/panel-head') %>
 </head>
 <body class="mp-body">
+<%
+const orderServices = (services || []).map(service => {
+    const source = String((service.kategori || '') + ' ' + (service.nama || ''));
+    const lower = source.toLowerCase();
+    let uiCategory = String(service.kategori || '').trim();
+    if(lower.includes('instagram')) uiCategory = uiCategory || 'Instagram';
+    else if(lower.includes('tiktok')) uiCategory = uiCategory || 'TikTok';
+    else if(lower.includes('youtube')) uiCategory = uiCategory || 'YouTube';
+    else if(lower.includes('facebook')) uiCategory = uiCategory || 'Facebook';
+    else if(lower.includes('twitter') || lower.includes('x ')) uiCategory = uiCategory || 'X - Twitter';
+    else if(lower.includes('spotify')) uiCategory = uiCategory || 'Spotify';
+    else if(lower.includes('telegram')) uiCategory = uiCategory || 'Telegram';
+    else if(lower.includes('linkedin')) uiCategory = uiCategory || 'LinkedIn';
+    else if(lower.includes('thread')) uiCategory = uiCategory || 'Thread';
+    else if(lower.includes('traffic')) uiCategory = uiCategory || 'Web Traffic';
+    else uiCategory = uiCategory || 'Lainnya';
+    return Object.assign({}, service, { uiCategory });
+});
+const categoryButtons = [
+    { key:'', label:'☰ Semua Kategori' },
+    { key:'Instagram', label:'◎ Instagram' },
+    { key:'Facebook', label:'f Facebook' },
+    { key:'YouTube', label:'▶ Youtube' },
+    { key:'X - Twitter', label:'✕ X - Twitter' },
+    { key:'Spotify', label:'◉ Spotify' },
+    { key:'TikTok', label:'♫ Tiktok' },
+    { key:'LinkedIn', label:'▣ Linkedin' },
+    { key:'Telegram', label:'✈ Telegram' },
+    { key:'Thread', label:'◎ Thread' },
+    { key:'Web Traffic', label:'◉ Web Traffic' },
+    { key:'Lainnya', label:'☰ Lainnya' },
+    { key:'Instagram Followers Indonesia', label:'◎ Instagram Followers' }
+];
+const selectCategories = Array.from(new Set(orderServices.map(s => String(s.uiCategory || '').trim()).filter(Boolean)));
+%>
 <div class="mp-layout">
     <%- include('partials/user-sidebar') %>
-    <main class="mp-main">
-        <%- include('partials/panel-top', {title: 'Buat Pesanan', subtitle: 'Pilih kategori, layanan, target, dan jumlah order.'}) %>
+    <main class="mp-main order-create-page-v22">
+        <%- include('partials/panel-top', {title: 'Buat Pesanan', subtitle: 'Pilih kategori, layanan, target, dan jumlah pesanan dengan benar.'}) %>
 
-        <div class="mp-category-grid">
-            <% const cats = [...new Set((services || []).map(s => s.kategori || 'Lainnya'))]; %>
-            <button class="mp-cat active" data-cat="">☰ Semua Kategori</button>
-            <% cats.slice(0, 11).forEach(cat => { %>
-                <button class="mp-cat" data-cat="<%= cat %>">◎ <%= cat %></button>
+        <div class="mp-category-grid order-category-grid-v22" id="categoryButtonsWrap">
+            <% categoryButtons.forEach((cat, idx) => {
+                const exists = !cat.key || orderServices.some(service => String(service.uiCategory) === cat.key || String(service.kategori || '') === cat.key || String(service.nama || '').toLowerCase().includes(cat.key.toLowerCase()));
+            %>
+                <button type="button" class="mp-cat <%= idx === 0 ? 'active' : '' %>" data-cat="<%= cat.key %>" <%= exists ? '' : 'disabled' %>><%= cat.label %></button>
             <% }) %>
         </div>
 
-        <div class="mp-two-col">
+        <div class="mp-two-col order-create-grid-v22">
             <section class="mp-card">
-                <div class="mp-card-head">
-                    <h2>🛒 Buat Pesanan</h2>
+                <div class="mp-card-head order-form-head-v22">
+                    <div>
+                        <h2>🛒 Buat Pesanan</h2>
+                    </div>
                     <span class="mp-chip">🏷 Kategori</span>
                 </div>
 
-                <form action="/order" method="POST" class="mp-form" id="orderForm">
+                <% if(!orderServices.length){ %>
+                    <div class="empty-cell">Belum ada layanan aktif. Tambahkan layanan terlebih dahulu dari Admin Layanan.</div>
+                <% } %>
+
+                <form action="/order" method="POST" class="mp-form order-form-v22" id="orderForm">
                     <label>Kategori</label>
-                    <select id="categorySelect">
-                        <option value="">Pilih...</option>
-                        <% cats.forEach(cat => { %><option value="<%= cat %>"><%= cat %></option><% }) %>
+                    <select id="categorySelect" name="selected_category">
+                        <option value="">Semua Kategori</option>
+                        <% selectCategories.forEach(cat => { %>
+                            <option value="<%= cat %>"><%= cat %></option>
+                        <% }) %>
                     </select>
 
                     <label>Layanan</label>
                     <select name="service_id" id="serviceSelect" required>
                         <option value="">Pilih...</option>
-                        <% (services || []).forEach(service => { %>
-                            <option value="<%= service.id %>" data-cat="<%= service.kategori %>"><%= service.nama %></option>
+                        <% orderServices.forEach(service => { %>
+                            <option value="<%= service.id %>" data-cat="<%= service.uiCategory %>"><%= service.nama %></option>
                         <% }) %>
                     </select>
 
-                    <div class="mp-desc" id="serviceDesc">Deskripsi layanan.</div>
+                    <div class="mp-desc order-service-desc-v22" id="serviceDesc">
+                        <div class="service-detail-box muted-detail">
+                            <strong>Deskripsi layanan akan muncul setelah layanan dipilih.</strong>
+                            <p>Pilih kategori lalu pilih layanan yang sesuai.</p>
+                        </div>
+                    </div>
 
                     <label>Link/Target</label>
-                    <input type="text" name="target" placeholder="Masukkan link atau username target" required>
+                    <input type="text" name="target" id="targetInput" placeholder="Masukkan link atau username target" required>
 
                     <label>Jumlah <span class="mini-badge">Min: <b id="minTxt">0</b></span> <span class="mini-badge">Max: <b id="maxTxt">0</b></span></label>
                     <input type="number" name="jumlah" id="qtyInput" placeholder="Jumlah order" required>
@@ -55,34 +103,33 @@
                 </form>
             </section>
 
-            <aside class="mp-card mp-info-card">
+            <aside class="mp-card mp-info-card order-info-card-v22">
                 <div class="mp-card-head"><h2>● Informasi</h2></div>
-                <div class="mp-info-content">
-                    <strong>Khusus pesan layanan Instagram tolong baca ini!</strong>
-                    <div class="mp-placeholder-img">IG<br>Guide</div>
-                    <p><strong>Penting Instagram:</strong></p>
-                    <p>Jika pengikut baru tidak terlihat, kemungkinan besar perlu disetujui secara manual. Pastikan akun target tidak membatasi undangan/follow.</p>
-                    <ol>
-                        <li>Buka Pengaturan dan Privasi.</li>
-                        <li>Pilih Ikuti dan Undang Teman.</li>
-                        <li>Nonaktifkan opsi Tandai untuk Ditinjau.</li>
-                        <li>Test pesan sedikit dulu untuk target sensitif.</li>
-                    </ol>
-                    <p><strong>Langkah-langkah membuat pesanan baru:</strong></p>
-                    <ul>
-                        <li>Pilih kategori.</li>
-                        <li>Pilih layanan.</li>
-                        <li>Masukkan target sesuai instruksi layanan.</li>
-                        <li>Masukkan jumlah lalu klik Pesan.</li>
-                    </ul>
-                </div>
+                <div class="mp-info-content" id="dynamicOrderInfo"></div>
             </aside>
         </div>
     </main>
 </div>
 
 <script>
-const services = <%- JSON.stringify((services || []).map(s => ({id:s.id,nama:s.nama,kategori:s.kategori,harga:Number(s.harga||0),min:Number(s.min_order||0),max:Number(s.max_order||0),desc:String(s.deskripsi||s.description||''),avg:Number((s.id||0)%240+25),h:Number((s.id||0)%9+1),m:Number((s.id||0)%58+1),rating:Number(s.rating||5),ratingCount:Number(s.rating_count||2)}))).replace(/</g,'\\u003c') %>;
+const services = <%- JSON.stringify(orderServices.map(s => ({
+    id: s.id,
+    nama: s.nama,
+    kategori: String(s.uiCategory || ''),
+    harga: Number(s.harga || 0),
+    min: Number(s.min_order || 0),
+    max: Number(s.max_order || 0),
+    desc: String(s.deskripsi || s.description || ''),
+    targetHint: String(s.target_hint || ''),
+    avgOrder: Number(s.avg_order_count || ((s.id || 0) % 300 + 12)),
+    avgTime: String(s.avg_time_text || `${(s.id || 0) % 20 + 1} menit ${(s.id || 0) % 59} detik`),
+    rating: Number(s.rating || 0),
+    ratingCount: Number(s.rating_count || 0),
+    refillLabel: String(s.refill_label || ''),
+    speedLabel: String(s.speed_label || ''),
+    qualityLabel: String(s.quality_label || ''),
+    startTime: String(s.start_time || '')
+}))).replace(/</g,'\\u003c') %>;
 const preselectedServiceId = <%- JSON.stringify(String(selectedServiceId || '')) %>;
 const categorySelect = document.getElementById('categorySelect');
 const serviceSelect = document.getElementById('serviceSelect');
@@ -91,43 +138,117 @@ const costInput = document.getElementById('costInput');
 const minTxt = document.getElementById('minTxt');
 const maxTxt = document.getElementById('maxTxt');
 const desc = document.getElementById('serviceDesc');
+const targetInput = document.getElementById('targetInput');
+const dynamicOrderInfo = document.getElementById('dynamicOrderInfo');
 function fmt(n){ return new Intl.NumberFormat('id-ID').format(Math.ceil(Number(n||0))); }
 function selectedService(){ return services.find(s => String(s.id) === String(serviceSelect.value)); }
 function updateCost(){ const s = selectedService(); const q = Number(qtyInput.value || 0); costInput.value = s ? fmt((s.harga * q) / 1000) : '0'; }
 function stars(r){ return '★★★★★'.split('').map((x,i)=> i < Math.round(Number(r||0)) ? '★' : '☆').join(''); }
+function escapeHtml(value){ return String(value || '').replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[char])); }
+function nl2br(value){ return escapeHtml(value).replace(/\n/g, '<br>'); }
+function defaultDesc(s){ return [s.refillLabel, s.speedLabel, s.qualityLabel].filter(Boolean).join('\n'); }
+function renderInfo(category){
+    const isInstagram = String(category || '').toLowerCase().includes('instagram');
+    const title = isInstagram ? 'Khusus pesan layanan Instagram tolong baca ini!' : 'Petunjuk pemesanan layanan';
+    const note = isInstagram
+        ? 'Jika Anda tidak melihat pengikut baru, kemungkinan besar karena mereka perlu disetujui secara manual. Untuk mengatasinya, ikuti langkah-langkah berikut untuk akun yang mau diisi followernya:'
+        : 'Pastikan target yang dimasukkan benar dan sesuai dengan jenis layanan yang dipilih agar proses order berjalan dengan normal.';
+    const stepList = isInstagram
+        ? ['Buka Pengaturan dan Privasi.','Pilih Ikuti dan Undang Teman.','Nonaktifkan opsi Tandai untuk Ditinjau.','Jika baru Nonaktifkan opsi Tandai untuk Ditinjau, kamu bisa test pesan sedikit dulu.']
+        : ['Pilih salah satu kategori.','Pilih salah satu layanan yang ingin dipesan.','Masukkan target pesanan sesuai ketentuan layanan.','Masukkan jumlah pesanan yang diinginkan.','Klik Submit untuk membuat pesanan baru.'];
+    const rules = [
+        'Silahkan membuat pesanan sesuai langkah-langkah diatas.',
+        'Jika ingin membuat pesanan dengan Target yang sama dengan pesanan yang sudah pernah dipesan sebelumnya, mohon menunggu sampai pesanan sebelumnya selesai diproses.',
+        'Jika terjadi kesalahan / mendapatkan pesan gagal yang kurang jelas, silahkan hubungi Admin untuk informasi lebih lanjut.',
+        'Jangan memasukkan orderan yang sama jika orderan sebelumnya belum selesai.',
+        'Jangan memasukkan orderan yang sama di panel lain jika orderan di panel ini belum selesai.',
+        'Jangan mengganti username atau menghapus link target saat sudah order.',
+        'Orderan yang sudah masuk tidak dapat di cancel / refund manual, seluruh proses orderan dikerjakan secara otomatis oleh server.'
+    ];
+    dynamicOrderInfo.innerHTML = `
+        <strong>${title}</strong>
+        <div class="order-guide-image-v22">Guide Preview</div>
+        <p><strong>${isInstagram ? 'Penting Instagram:' : 'Penting:'}</strong></p>
+        <p>${note}</p>
+        <ol>${stepList.map(item => `<li>${item}</li>`).join('')}</ol>
+        <p><strong>Ketentuan membuat pesanan baru:</strong></p>
+        <ul>${rules.map(item => `<li>${item}</li>`).join('')}</ul>
+    `;
+}
 function updateServiceInfo(){
     const s = selectedService();
-    if(!s){ minTxt.textContent='0'; maxTxt.textContent='0'; desc.textContent='Deskripsi layanan.'; costInput.value='0'; return; }
+    if(!s){
+        minTxt.textContent='0'; maxTxt.textContent='0';
+        desc.innerHTML = '<div class="service-detail-box muted-detail"><strong>Deskripsi layanan akan muncul setelah layanan dipilih.</strong><p>Pilih kategori lalu pilih layanan yang sesuai.</p></div>';
+        targetInput.placeholder = 'Masukkan link atau username target';
+        costInput.value='0';
+        renderInfo(categorySelect.value || '');
+        return;
+    }
     minTxt.textContent=fmt(s.min); maxTxt.textContent=fmt(s.max); qtyInput.min=s.min; qtyInput.max=s.max; qtyInput.placeholder='Min '+fmt(s.min)+' - Max '+fmt(s.max);
+    targetInput.placeholder = String(s.kategori).toLowerCase().includes('instagram') ? 'Contoh: username atau link Instagram' : 'Masukkan target sesuai layanan';
     desc.innerHTML = '<div class="service-detail-box">'
-        + '<strong>'+s.nama+'</strong>'
+        + '<strong>'+escapeHtml(s.nama)+'</strong>'
         + '<b>Harga: Rp '+fmt(s.harga)+'/K</b>'
         + '<hr>'
         + '<b>Deskripsi:</b>'
-        + '<p>'+(s.desc ? s.desc.replace(/\n/g, '<br>') : [s.speedLabel || 'Speed 5-20K/days', s.qualityLabel || 'LOW QUALITY', s.refillLabel || 'No refill'].join('<br>'))+'</p>'
-        + (s.targetHint ? '<hr><b>Petunjuk Target:</b><p>'+s.targetHint.replace(/\n/g, '<br>')+'</p>' : '')
+        + '<p>'+nl2br(s.desc || defaultDesc(s))+'</p>'
         + '<hr>'
         + '<b>Waktu Rata-Rata:</b>'
-        + '<p>Jumlah pesan rata-rata '+fmt(s.avgOrder)+'. Waktu proses rata-rata '+s.avgTime+'.</p>'
+        + '<p>Jumlah pesan rata-rata '+fmt(s.avgOrder)+'. Waktu proses rata-rata '+escapeHtml(s.avgTime)+'.</p>'
         + '<hr>'
         + '<b>Rating:</b>'
         + '<p><span class="mp-stars">'+stars(s.rating)+'</span><br>('+fmt(s.ratingCount)+' rating dari pengguna.)</p>'
         + '</div>';
+    renderInfo(s.kategori);
     updateCost();
 }
-categorySelect.addEventListener('change', () => { const cat=categorySelect.value; [...serviceSelect.options].forEach((opt,i)=>{ if(i===0) return; opt.hidden = cat && opt.dataset.cat !== cat; }); serviceSelect.value=''; updateServiceInfo(); });
-document.querySelectorAll('.mp-cat').forEach(btn=>btn.addEventListener('click',()=>{ document.querySelectorAll('.mp-cat').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); categorySelect.value=btn.dataset.cat; categorySelect.dispatchEvent(new Event('change')); }));
-serviceSelect.addEventListener('change', updateServiceInfo); qtyInput.addEventListener('input', updateCost);
+function matchButtonValue(cat){
+    if(!cat) return '';
+    const known = ['Instagram','Facebook','YouTube','X - Twitter','Spotify','TikTok','LinkedIn','Telegram','Thread','Web Traffic','Lainnya','Instagram Followers Indonesia'];
+    return known.find(v => v === cat) || cat;
+}
+function syncButtons(cat){
+    const buttonValue = matchButtonValue(cat);
+    document.querySelectorAll('#categoryButtonsWrap .mp-cat').forEach(btn=>btn.classList.toggle('active', btn.dataset.cat === buttonValue || (!buttonValue && btn.dataset.cat === '')));
+}
+function filterByCategory(cat){
+    [...serviceSelect.options].forEach((opt,i)=>{
+        if(i===0) return;
+        opt.hidden = Boolean(cat) && opt.dataset.cat !== cat;
+    });
+    const current = selectedService();
+    if(current && cat && current.kategori !== cat){ serviceSelect.value=''; }
+    updateServiceInfo();
+}
+categorySelect.addEventListener('change', ()=>{ syncButtons(categorySelect.value); filterByCategory(categorySelect.value); });
+document.querySelectorAll('#categoryButtonsWrap .mp-cat').forEach(btn=>btn.addEventListener('click',()=>{
+    if(btn.disabled) return;
+    const cat = btn.dataset.cat || '';
+    syncButtons(cat);
+    if(cat === 'Instagram Followers Indonesia'){
+        const normalized = Array.from(categorySelect.options).find(o => String(o.value).toLowerCase().includes('instagram'))?.value || 'Instagram';
+        categorySelect.value = normalized;
+    } else {
+        categorySelect.value = Array.from(categorySelect.options).find(o => o.value === cat)?.value || '';
+    }
+    categorySelect.dispatchEvent(new Event('change'));
+}));
+serviceSelect.addEventListener('change', updateServiceInfo);
+qtyInput.addEventListener('input', updateCost);
 if(preselectedServiceId){
     const found = services.find(s => String(s.id) === String(preselectedServiceId));
     if(found){
-        categorySelect.value = found.kategori || '';
+        categorySelect.value = Array.from(categorySelect.options).find(o => o.value === found.kategori)?.value || '';
+        syncButtons(found.kategori);
         categorySelect.dispatchEvent(new Event('change'));
         serviceSelect.value = String(found.id);
-        updateServiceInfo();
-        setTimeout(()=>document.getElementById('orderForm')?.scrollIntoView({behavior:'smooth', block:'center'}), 150);
     }
+} else {
+    renderInfo('Instagram');
 }
+updateServiceInfo();
+
 document.getElementById('orderForm').addEventListener('submit', function(e){
     const s = selectedService();
     if(!s) return;

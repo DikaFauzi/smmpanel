@@ -15,7 +15,7 @@ function safeText(value){ return String(value || '').replace(/\r?\n/g, ' &#10; '
 %>
 <div class="mp-layout">
     <%- include('partials/admin-sidebar') %>
-    <main class="mp-main">
+    <main class="mp-main admin-services-final-v35">
         <%- include('partials/panel-top', {title:'Admin Layanan', subtitle:'Kelola layanan dengan lebih rapi, cepat, dan sinkron ke katalog serta form order.'}) %>
 
         <section class="mp-admin-summary-grid service-summary-grid">
@@ -212,10 +212,13 @@ function safeText(value){ return String(value || '').replace(/\r?\n/g, ' &#10; '
                     <span class="mp-chip"><span id="visibleServiceCount"><%= servicesList.length %></span> / <%= servicesList.length %> layanan</span>
                 </div>
 
-                <div class="service-toolbar">
-                    <div class="mp-search service-admin-search compact">
-                        <input id="adminServiceSearch" placeholder="Cari nama layanan atau kategori...">
-                        <button type="button" aria-label="Cari">🔍</button>
+                <div class="service-toolbar service-toolbar-final-v35">
+                    <div class="service-admin-search-wrap-v35">
+                        <label for="adminServiceSearch">Cari Layanan</label>
+                        <div class="mp-search service-admin-search compact service-admin-search-v35">
+                            <input id="adminServiceSearch" placeholder="Cari nama layanan atau kategori...">
+                            <button type="button" aria-label="Cari">🔍</button>
+                        </div>
                     </div>
                     <div class="service-filter-row">
                         <select id="serviceStatusFilter">
@@ -290,13 +293,19 @@ function safeText(value){ return String(value || '').replace(/\r?\n/g, ' &#10; '
                                     </div>
                                 </td>
                                 <td><%- include('partials/status',{status:s.status}) %></td>
-                                <td class="mp-action-stack service-action-stack">
-                                    <button type="button" class="mp-btn small mp-btn-soft js-preview-service">Preview</button>
-                                    <button type="button" class="mp-btn small js-edit-service">Edit</button>
-                                    <form action="/admin/services/delete" method="POST" onsubmit="return confirm('Nonaktifkan layanan ini?')">
-                                        <input type="hidden" name="id" value="<%= s.id %>">
-                                        <button class="mp-btn small danger"><%= String(s.status||'').toLowerCase()==='inactive' ? 'Tetap Nonaktif' : 'Nonaktifkan' %></button>
-                                    </form>
+                                <td class="service-action-cell-v35">
+                                    <div class="service-action-grid-v35">
+                                        <button type="button" class="mp-btn small mp-btn-soft js-preview-service">Preview</button>
+                                        <button type="button" class="mp-btn small js-edit-service">Edit</button>
+                                        <form action="/admin/services/delete" method="POST" onsubmit="return confirm('Nonaktifkan layanan ini?')">
+                                            <input type="hidden" name="id" value="<%= s.id %>">
+                                            <button class="mp-btn small danger-lite-v35"><%= String(s.status||'').toLowerCase()==='inactive' ? 'Tetap Nonaktif' : 'Nonaktifkan' %></button>
+                                        </form>
+                                        <form action="/admin/services/hard-delete" method="POST" onsubmit="return confirm('Hapus permanen layanan ini? Hanya bisa jika layanan belum memiliki riwayat order.')">
+                                            <input type="hidden" name="id" value="<%= s.id %>">
+                                            <button class="mp-btn small danger hard-delete-v35">Hapus</button>
+                                        </form>
+                                    </div>
                                 </td>
                             </tr>
                         <% }) %>
@@ -439,6 +448,8 @@ function safeText(value){ return String(value || '').replace(/\r?\n/g, ' &#10; '
 
 <script>
 (function(){
+    // Theme mode is handled globally by partials/panel-top.ejs.
+
     const currency = new Intl.NumberFormat('id-ID');
     const searchInput = document.getElementById('adminServiceSearch');
     const statusFilter = document.getElementById('serviceStatusFilter');

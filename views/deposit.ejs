@@ -1,26 +1,199 @@
 <!DOCTYPE html>
 <html>
-<head><title>Deposit - <%= appName || 'DK PANEL' %></title><%- include('partials/panel-head') %></head>
-<body class="mp-body"><div class="mp-layout"><%- include('partials/user-sidebar') %><main class="mp-main">
-<%- include('partials/panel-top', {title:'Deposit Saldo', subtitle:'Top up saldo user untuk membuat pesanan.'}) %>
-<% const saldoUser = Number((user && user.saldo) || 0); %>
-<div class="mp-stat-grid deposit-balance-grid">
-    <div class="mp-stat deposit-balance-card"><span>💰</span><p>Saldo Aktif</p><strong>Rp <%= saldoUser.toLocaleString('id-ID') %></strong><small>Saldo ini dipakai untuk membayar order.</small></div>
-    <div class="mp-stat"><span>▣</span><p>Minimal Deposit</p><strong>Rp 10.000</strong><small>Request diproses manual oleh admin.</small></div>
+<head>
+    <title>Deposit - <%= appName || 'DK PANEL' %></title>
+    <%- include('partials/panel-head') %>
+</head>
+<body class="mp-body">
+<div class="mp-layout">
+    <%- include('partials/user-sidebar') %>
+    <main class="mp-main deposit-page-v25">
+        <%- include('partials/panel-top', {title:'Deposit Saldo', subtitle:'Top up saldo manual dengan metode pembayaran lengkap dan bukti transfer.'}) %>
+        <%
+            const saldoUser = Number((user && user.saldo) || 0);
+            const methods = paymentMethods || [];
+            const defaultMethod = methods[0] || null;
+        %>
+
+        <div class="mp-stat-grid deposit-balance-grid deposit-summary-v25">
+            <div class="mp-stat deposit-balance-card"><span>💰</span><p>Saldo Aktif</p><strong>Rp <%= saldoUser.toLocaleString('id-ID') %></strong><small>Saldo siap dipakai untuk order.</small></div>
+            <div class="mp-stat"><span>▣</span><p>Minimal Deposit</p><strong>Rp 10.000</strong><small>Deposit masuk setelah admin approve.</small></div>
+            <div class="mp-stat"><span>⚡</span><p>Proses Manual</p><strong>Admin Check</strong><small>Upload bukti agar cepat diproses.</small></div>
+        </div>
+
+        <% if(error){ %><div class="mp-alert"><%= error %></div><% } %>
+
+        <div class="mp-two-col deposit-grid-v25">
+            <section class="mp-card">
+                <div class="mp-card-head deposit-card-head-v25">
+                    <div>
+                        <h2>▣ Buat Request Deposit</h2>
+                        <p>Pilih metode, masukkan nominal saldo, lalu upload bukti transfer.</p>
+                    </div>
+                    <span class="mp-chip">Manual Aman</span>
+                </div>
+
+                <form id="depositForm" action="/deposit" method="POST" enctype="multipart/form-data" class="mp-form deposit-form-v25">
+                    <label>Metode Pembayaran</label>
+                    <div class="payment-method-grid-v25" id="paymentMethodGrid">
+                        <% if(methods.length === 0){ %>
+                            <div class="empty-cell">Belum ada metode pembayaran aktif.</div>
+                        <% } %>
+                        <% methods.forEach((method, index) => { %>
+                            <label class="payment-method-card-v25 <%= index === 0 ? 'active' : '' %>" data-method-card>
+                                <input
+                                    type="radio"
+                                    name="payment_method_id"
+                                    value="<%= method.id %>"
+                                    data-name="<%= method.name %>"
+                                    data-type="<%= method.type %>"
+                                    data-account-name="<%= method.account_name || '' %>"
+                                    data-account-number="<%= method.account_number || '' %>"
+                                    data-label="<%= method.qr_label || method.type %>"
+                                    data-min="<%= Number(method.min_amount || 10000) %>"
+                                    data-max="<%= Number(method.max_amount || 10000000) %>"
+                                    data-fee-fixed="<%= Number(method.fee_fixed || 0) %>"
+                                    data-fee-percent="<%= Number(method.fee_percent || 0) %>"
+                                    <%= index === 0 ? 'checked' : '' %>
+                                >
+                                <div class="payment-method-icon-v25"><%= method.qr_label || method.type || 'PAY' %></div>
+                                <div>
+                                    <strong><%= method.name %></strong>
+                                    <p><%= method.account_name || 'DK PANEL' %><br><%= method.account_number || 'Nomor rekening/admin belum diisi' %></p>
+                                    <b>Min Rp <%= Number(method.min_amount || 10000).toLocaleString('id-ID') %></b>
+                                </div>
+                            </label>
+                        <% }) %>
+                    </div>
+
+                    <div class="deposit-selected-box-v25" id="selectedPaymentInfo">
+                        <div>
+                            <span>Metode Terpilih</span>
+                            <strong><%= defaultMethod ? defaultMethod.name : '-' %></strong>
+                            <p><%= defaultMethod ? ((defaultMethod.account_name || 'DK PANEL') + ' • ' + (defaultMethod.account_number || '-')) : '-' %></p>
+                        </div>
+                        <button type="button" class="mp-btn small mp-btn-soft" id="copyPaymentInfo">Copy Info</button>
+                    </div>
+
+                    <div class="mp-form-row">
+                        <div>
+                            <label>Nominal Saldo</label>
+                            <input type="number" name="amount" id="depositAmount" min="10000" placeholder="Contoh: 50000" required>
+                        </div>
+                        <div>
+                            <label>Total Yang Harus Dibayar</label>
+                            <div class="mp-cost"><span>Rp</span><input type="text" id="depositTotalPay" value="0" readonly></div>
+                        </div>
+                    </div>
+
+                    <div class="deposit-calculation-box-v25 deposit-calculation-box-v26">
+                        <div><span>Saldo Masuk</span><strong id="depositAmountPreview">Rp 0</strong></div>
+                        <div><span>Biaya / Fee</span><strong id="depositFeePreview">Rp 0</strong></div>
+                        <div><span>Kode Unik</span><strong id="depositUniquePreview">Rp 0</strong></div>
+                        <div class="deposit-total-transfer-v26"><span>Real Transfer User</span><strong id="depositRealTransferPreview">Rp 0</strong></div>
+                    </div>
+
+                    <div class="deposit-transfer-warning-v26">
+                        Transfer harus <b>persis sesuai Real Transfer User</b>. Kode unik dipakai untuk mencocokkan pembayaran, tetapi saldo yang masuk tetap nominal deposit.
+                    </div>
+
+                    <label>Bukti Transfer</label>
+                    <input class="deposit-proof-input-v26" type="file" name="proof_image" accept="image/*" required>
+
+                    <div class="deposit-help-box">Saldo hanya akan bertambah setelah admin approve. Sistem memiliki guard agar deposit tidak bisa double approve dan mutasi saldo tetap tercatat.</div>
+                    <button class="mp-btn mp-btn-full" type="submit">Kirim Request Deposit</button>
+                </form>
+            </section>
+
+            <aside class="mp-card mp-info-card deposit-info-card-v25">
+                <div class="mp-card-head"><h2>● Informasi Deposit</h2></div>
+                <div class="mp-info-content">
+                    <h2>Langkah-langkah:</h2>
+                    <ul>
+                        <li>Pilih metode pembayaran.</li>
+                        <li>Transfer sesuai <b>Real Transfer User</b>, yaitu nominal saldo + fee + kode unik.</li>
+                        <li>Upload bukti transfer yang jelas.</li>
+                        <li>Tunggu admin approve deposit.</li>
+                        <li>Jika disetujui, saldo aktif otomatis bertambah.</li>
+                    </ul>
+                    <h2>Metode tersedia:</h2>
+                    <div class="deposit-method-tags-v25">
+                        <span>QRIS</span><span>BCA</span><span>BRI</span><span>BNI</span><span>Mandiri</span><span>DANA</span><span>OVO</span><span>GoPay</span><span>ShopeePay</span>
+                    </div>
+                    <h2>Penting:</h2>
+                    <ul>
+                        <li>Deposit pending belum masuk saldo aktif.</li>
+                        <li>Saldo yang masuk hanya nominal deposit. Fee dan kode unik tidak ditambahkan ke saldo.</li>
+                        <li>Jika nominal transfer tidak sama dengan total bayar atau bukti tidak jelas, admin bisa menolak deposit.</li>
+                    </ul>
+                </div>
+            </aside>
+        </div>
+    </main>
 </div>
-<div class="mp-two-col">
-<section class="mp-card"><div class="mp-card-head"><h2>▣ Request Deposit</h2><span class="mp-chip">Saldo saat ini: Rp <%= saldoUser.toLocaleString('id-ID') %></span></div>
-<% if(error){ %><div class="mp-alert"><%= error %></div><% } %>
-<div class="pay-list">
-<% ['QRIS BONUS 11% ( FEE Rp 750 + 0.70% ) [ ON 24 JAM ] [ Emergency 2 ]','QRIS BONUS 10% ( fee 1% ) [ ON 24 JAM ] V3','Bank BCA bonus 11% ( minimal 10.000 )'].forEach((m,i)=>{ %>
-<label class="pay-item"><input type="radio" form="depositForm" name="metode" value="<%= m %>" <%= i===0?'checked':'' %>><span class="qr">QRIS</span><div><strong><%= m %></strong><p>Minimal Deposit: Rp 10.000<br>Maksimal Deposit: Rp 10.000.000<br>Jadwal Online: 24 Jam</p><b>Online [24 Jam]</b></div></label>
-<% }) %>
-</div>
-<form id="depositForm" action="/deposit" method="POST" enctype="multipart/form-data" class="mp-form deposit-form">
-<label>Jumlah Deposit</label><input type="number" name="amount" min="10000" placeholder="Minimal Rp10.000" required>
-<label>Bukti Transfer</label><input type="file" name="proof_image" accept="image/*" required>
-<div class="deposit-help-box">Setelah admin approve, saldo user akan otomatis bertambah dan tercatat di Mutasi Saldo.</div>
-<button class="mp-btn mp-btn-full" type="submit">Kirim Request Deposit</button>
-</form></section>
-<aside class="mp-card mp-info-card"><div class="mp-card-head"><h2>● Informasi</h2></div><div class="mp-info-content"><p>- Cara deposit melalui Bank : <b>MELALUI BANK</b><br>- Cara deposit melalui QRIS : <b>MELALUI QRIS</b></p><h2>Langkah-langkah:</h2><ul><li>Pilih jenis pembayaran yang diinginkan.</li><li>Masukkan jumlah deposit.</li><li>Upload bukti transfer.</li><li>Tunggu admin memproses request.</li><li>Jika disetujui, saldo aktif akan bertambah otomatis.</li></ul><h2>Penting:</h2><ul><li>Pastikan nominal transfer sesuai.</li><li>Deposit pending belum masuk ke saldo aktif.</li><li>Cek riwayat deposit dan mutasi saldo untuk melihat status.</li></ul></div></aside>
-</div></main></div></body></html>
+<script>
+(function(){
+    const amountInput = document.getElementById('depositAmount');
+    const totalInput = document.getElementById('depositTotalPay');
+    const amountPreview = document.getElementById('depositAmountPreview');
+    const feePreview = document.getElementById('depositFeePreview');
+    const uniquePreview = document.getElementById('depositUniquePreview');
+    const realTransferPreview = document.getElementById('depositRealTransferPreview');
+    const currentUserId = Number(<%- JSON.stringify((user && user.id) || 0) %>);
+    const selectedInfo = document.getElementById('selectedPaymentInfo');
+    const copyBtn = document.getElementById('copyPaymentInfo');
+    const cards = Array.from(document.querySelectorAll('[data-method-card]'));
+    const fmt = n => new Intl.NumberFormat('id-ID').format(Math.ceil(Number(n || 0)));
+    const selectedMethod = () => document.querySelector('input[name="payment_method_id"]:checked');
+
+    function updateSelectedCard(){
+        cards.forEach(card => card.classList.toggle('active', card.querySelector('input')?.checked));
+    }
+
+    function dateSeed(){
+        const now = new Date();
+        return Number(String(now.getFullYear()) + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0'));
+    }
+
+    function uniqueCodeFor(amount, input){
+        if(!amount || !input) return 0;
+        const methodId = Number(input.value || 0);
+        return 100 + Math.abs((amount * 7 + methodId * 53 + currentUserId * 37 + dateSeed()) % 900);
+    }
+
+    function calculate(){
+        const input = selectedMethod();
+        const amount = Number(amountInput?.value || 0);
+        const feeFixed = Number(input?.dataset.feeFixed || 0);
+        const feePercent = Number(input?.dataset.feePercent || 0);
+        const percentageFee = Math.ceil((amount * feePercent) / 100);
+        const fee = amount > 0 ? feeFixed + percentageFee : 0;
+        const uniqueCode = uniqueCodeFor(amount, input);
+        const realTransfer = amount > 0 ? amount + fee + uniqueCode : 0;
+        if(totalInput) totalInput.value = fmt(realTransfer);
+        if(amountPreview) amountPreview.textContent = 'Rp ' + fmt(amount);
+        if(feePreview) feePreview.textContent = 'Rp ' + fmt(fee);
+        if(uniquePreview) uniquePreview.textContent = 'Rp ' + fmt(uniqueCode);
+        if(realTransferPreview) realTransferPreview.textContent = 'Rp ' + fmt(realTransfer);
+
+        if(input && selectedInfo){
+            selectedInfo.querySelector('strong').textContent = input.dataset.name || '-';
+            selectedInfo.querySelector('p').textContent = (input.dataset.accountName || 'DK PANEL') + ' • ' + (input.dataset.accountNumber || '-');
+            amountInput.min = input.dataset.min || 10000;
+            amountInput.max = input.dataset.max || 10000000;
+        }
+        updateSelectedCard();
+    }
+
+    document.querySelectorAll('input[name="payment_method_id"]').forEach(input => input.addEventListener('change', calculate));
+    amountInput?.addEventListener('input', calculate);
+    copyBtn?.addEventListener('click', async () => {
+        const input = selectedMethod();
+        const text = `${input?.dataset.name || '-'}\nNama: ${input?.dataset.accountName || 'DK PANEL'}\nNomor/Info: ${input?.dataset.accountNumber || '-'}`;
+        try { await navigator.clipboard.writeText(text); alert('Info pembayaran berhasil dicopy.'); } catch(e) { alert(text); }
+    });
+    calculate();
+})();
+</script>
+</body>
+</html>

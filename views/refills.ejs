@@ -1,1 +1,130 @@
-<!DOCTYPE html><html><head><title>Refill - <%= appName %></title><link rel="stylesheet" href="/style.css"></head><body class="mp-app-body"><div class="layout"><%- include('partials/user-sidebar', { active: 'refills' }) %><main class="content"><div class="topbar"><div><h1>Request Refill</h1><p>Ajukan refill untuk order yang punya garansi refill.</p></div></div><div class="form-card compact-form"><h2>Ajukan Refill</h2><form action="/refills" method="POST" class="service-form-grid"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><select name="order_id" required><option value="">Pilih order eligible</option><% eligibleOrders.forEach(order=>{ %><option value="<%= order.id %>">#<%= order.id %> - <%= order.service_name %></option><% }) %></select><input type="text" name="reason" placeholder="Alasan refill"><button type="submit">Kirim Request</button></form></div><div class="table-card"><table><thead><tr><th>ID</th><th>Order</th><th>Layanan</th><th>Target</th><th>Alasan</th><th>Status</th><th>Catatan Admin</th><th>Waktu</th></tr></thead><tbody><% refills.forEach(item=>{ %><tr><td>#<%= item.id %></td><td>#<%= item.order_id %></td><td><%= item.service_name %></td><td><%= item.target %></td><td><%= item.reason || '-' %></td><td><span class="status <%= item.status %>"><%= item.status %></span></td><td><%= item.admin_note || '-' %></td><td><%= item.created_at ? new Date(item.created_at).toLocaleString('id-ID') : '-' %></td></tr><% }) %></tbody></table></div></main></div></body></html>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Refill Pesanan - <%= appName || 'DK PANEL' %></title>
+    <%- include('partials/panel-head') %>
+</head>
+<body class="mp-body">
+<%
+const refillList = refills || [];
+const eligibleList = eligibleOrders || [];
+const processCount = refillList.filter(r => String(r.status || '').toLowerCase() === 'proses').length;
+const doneCount = refillList.filter(r => String(r.status || '').toLowerCase() === 'selesai').length;
+const rejectedCount = refillList.filter(r => String(r.status || '').toLowerCase() === 'ditolak').length;
+function fmtDate(value){
+    if(!value) return '-';
+    try { return new Date(value).toLocaleString('id-ID'); } catch(e){ return value; }
+}
+%>
+<div class="mp-layout">
+    <%- include('partials/user-sidebar') %>
+    <main class="mp-main refill-page-v23">
+        <%- include('partials/panel-top', {title:'Refill Pesanan', subtitle:'Ajukan dan pantau refill untuk order yang memiliki garansi.'}) %>
+
+
+        <% if (typeof pageError !== 'undefined' && pageError) { %>
+            <div class="mp-alert refill-page-alert-v24"><%= pageError %></div>
+        <% } %>
+        <section class="mp-stat-grid refill-stat-grid-v23">
+            <article class="mp-stat"><span>♻</span><div><p>Total Refill</p><strong><%= refillList.length %></strong></div></article>
+            <article class="mp-stat"><span>⏳</span><div><p>Proses</p><strong><%= processCount %></strong></div></article>
+            <article class="mp-stat"><span>✓</span><div><p>Selesai</p><strong><%= doneCount %></strong></div></article>
+            <article class="mp-stat"><span>×</span><div><p>Ditolak</p><strong><%= rejectedCount %></strong></div></article>
+        </section>
+
+        <section class="mp-card refill-request-card-v23">
+            <div class="mp-card-head refill-card-head-v23">
+                <div>
+                    <h2>♻ Ajukan Refill</h2>
+                    <p>Pilih pesanan yang sudah selesai dan memiliki label refill. Jika belum ada order eligible, tabel riwayat tetap bisa dipantau.</p>
+                </div>
+                <span class="mp-chip"><%= eligibleList.length %> order bisa refill</span>
+            </div>
+            <form action="/refills/add" method="POST" class="mp-form refill-request-form-v23">
+                <div>
+                    <label>ID Pesanan</label>
+                    <select name="order_id" required <%= eligibleList.length ? '' : 'disabled' %>>
+                        <option value=""><%= eligibleList.length ? 'Pilih pesanan yang bisa refill...' : 'Belum ada pesanan eligible refill' %></option>
+                        <% eligibleList.forEach(order => { %>
+                            <option value="<%= order.id %>">#<%= order.id %> - <%= order.service_name %> | Target: <%= order.target %></option>
+                        <% }) %>
+                    </select>
+                </div>
+                <div>
+                    <label>Catatan</label>
+                    <input name="note" placeholder="Contoh: Followers turun, mohon proses refill." <%= eligibleList.length ? '' : 'disabled' %>>
+                </div>
+                <button class="mp-btn" <%= eligibleList.length ? '' : 'disabled' %>>Ajukan Refill</button>
+            </form>
+        </section>
+
+        <section class="mp-card refill-list-card-v23">
+            <div class="mp-card-head refill-card-head-v23">
+                <h2>♻ Refill Pesanan</h2>
+            </div>
+
+            <div class="refill-filter-panel-v23">
+                <select id="refillStatusFilter">
+                    <option value="">Status</option>
+                    <option value="proses">Proses</option>
+                    <option value="selesai">Selesai</option>
+                    <option value="ditolak">Ditolak</option>
+                </select>
+                <div class="mp-search refill-search-v23">
+                    <input id="refillSearch" placeholder="Cari...">
+                    <button type="button">🔍</button>
+                </div>
+            </div>
+
+            <div class="mp-table-wrap refill-table-wrap-v23">
+                <table class="mp-table refill-table-v23" id="refillTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Dibuat</th>
+                            <th>ID Pesanan</th>
+                            <th>Layanan</th>
+                            <th>Target</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <% if(!refillList.length){ %>
+                        <tr><td colspan="6" class="empty-cell">Belum ada request refill.</td></tr>
+                    <% } %>
+                    <% refillList.forEach(item => { %>
+                        <tr class="refill-row-v23" data-status="<%= String(item.status || '').toLowerCase() %>" data-search="<%= String((item.id||'')+' '+(item.order_id||'')+' '+(item.service_name||'')+' '+(item.target||'')).toLowerCase() %>">
+                            <td><%= item.id %></td>
+                            <td><%= fmtDate(item.created_at) %></td>
+                            <td><%= item.order_id %></td>
+                            <td><%= item.service_name || '-' %></td>
+                            <td class="target-cell"><%= item.target || '-' %></td>
+                            <td><%- include('partials/status',{status:item.status}) %></td>
+                        </tr>
+                    <% }) %>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+</div>
+<script>
+(function(){
+    const statusFilter = document.getElementById('refillStatusFilter');
+    const searchInput = document.getElementById('refillSearch');
+    const rows = Array.from(document.querySelectorAll('.refill-row-v23'));
+    function applyFilters(){
+        const status = (statusFilter?.value || '').toLowerCase();
+        const keyword = (searchInput?.value || '').toLowerCase().trim();
+        rows.forEach(row => {
+            const okStatus = !status || row.dataset.status === status;
+            const okSearch = !keyword || row.dataset.search.includes(keyword);
+            row.style.display = okStatus && okSearch ? '' : 'none';
+        });
+    }
+    statusFilter?.addEventListener('change', applyFilters);
+    searchInput?.addEventListener('input', applyFilters);
+})();
+</script>
+</body>
+</html>

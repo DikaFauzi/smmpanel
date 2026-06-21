@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Laporan Sales - <%= appName || 'DK PANEL' %></title>
+    <%- include('partials/panel-head') %>
+</head>
+<body class="mp-body sales-report-page" data-theme="light">
+<div class="mp-layout">
+    <%- include('partials/admin-sidebar') %>
+    <main class="mp-main sales-report-main">
+        <div class="sales-report-topbar">
+            <div>
+                <h1>Laporan Sales</h1>
+                <p>Analisa penjualan order berdasarkan tahun, bulan, minggu, dan hari.</p>
+            </div>
+            <div class="sales-theme-switcher" role="group" aria-label="Mode tampilan laporan">
+                <button type="button" class="active" data-theme="light">☀️ Siang</button>
+                <button type="button" data-theme="dark">🌙 Malam</button>
+            </div>
+        </div>
+
+        <form class="sales-filter-card" method="GET" action="/admin/sales-report">
+            <div>
+                <label>Status laporan</label>
+                <select name="status">
+                    <option value="valid" <%= stats.statusMode === 'valid' ? 'selected' : '' %>>Sales valid, exclude canceled/failed</option>
+                    <option value="completed" <%= stats.statusMode === 'completed' ? 'selected' : '' %>>Hanya completed/success</option>
+                    <option value="all" <%= stats.statusMode === 'all' ? 'selected' : '' %>>Semua status</option>
+                </select>
+            </div>
+            <div>
+                <label>Dari tanggal</label>
+                <input type="date" name="from" value="<%= stats.dateFrom || '' %>">
+            </div>
+            <div>
+                <label>Sampai tanggal</label>
+                <input type="date" name="to" value="<%= stats.dateTo || '' %>">
+            </div>
+            <div class="sales-filter-actions">
+                <button class="mp-btn">Terapkan</button>
+                <a href="/admin/sales-report" class="mp-btn mp-btn-soft">Reset</a>
+            </div>
+        </form>
+
+        <section class="sales-summary-grid">
+            <article class="sales-summary-card primary">
+                <span>💰</span>
+                <div>
+                    <p>Total Sales</p>
+                    <strong>Rp <%= Number(stats.totalRevenue || 0).toLocaleString('id-ID') %></strong>
+                    <small>Nilai sales sesuai filter aktif.</small>
+                </div>
+            </article>
+            <article class="sales-summary-card">
+                <span>🧾</span>
+                <div>
+                    <p>Total Order</p>
+                    <strong><%= Number(stats.totalOrders || 0).toLocaleString('id-ID') %></strong>
+                    <small>Jumlah order masuk.</small>
+                </div>
+            </article>
+            <article class="sales-summary-card purple">
+                <span>📦</span>
+                <div>
+                    <p>Total Qty</p>
+                    <strong><%= Number(stats.totalQty || 0).toLocaleString('id-ID') %></strong>
+                    <small>Total kuantitas order.</small>
+                </div>
+            </article>
+            <article class="sales-summary-card green">
+                <span>📊</span>
+                <div>
+                    <p>Avg Order Value</p>
+                    <strong>Rp <%= Number(stats.avgOrderValue || 0).toLocaleString('id-ID') %></strong>
+                    <small>Rata-rata nilai per order.</small>
+                </div>
+            </article>
+        </section>
+
+        <section class="sales-mode-panel">
+            <div class="sales-mode-head">
+                <div>
+                    <h2>Grafik Penjualan</h2>
+                    <p>Pilih mode laporan untuk melihat tren sales per tahun, bulan, minggu, atau hari.</p>
+                </div>
+                <div class="sales-mode-tabs" role="group" aria-label="Mode laporan sales">
+                    <button type="button" class="active" data-mode="yearly">Pertahun</button>
+                    <button type="button" data-mode="monthly">Perbulan</button>
+                    <button type="button" data-mode="weekly">Perminggu</button>
+                    <button type="button" data-mode="daily">Perhari</button>
+                </div>
+            </div>
+
+            <div class="sales-chart-grid">
+                <article class="sales-chart-card big">
+                    <div class="sales-chart-title">
+                        <div>
+                            <h3 id="mainChartTitle">Sales Pertahun</h3>
+                            <p id="mainChartSubtitle">Nilai penjualan berdasarkan tahun.</p>
+                        </div>
+                        <span id="salesDataCount">0 data</span>
+                    </div>
+                    <div class="sales-canvas-wrap">
+                        <canvas id="salesRevenueChart" height="310"></canvas>
+                    </div>
+                </article>
+
+                <article class="sales-chart-card">
+                    <div class="sales-chart-title compact">
+                        <div>
+                            <h3>Jumlah Order</h3>
+                            <p id="ordersChartSubtitle">Order berdasarkan mode aktif.</p>
+                        </div>
+                    </div>
+                    <div class="sales-canvas-wrap small">
+                        <canvas id="salesOrderChart" height="260"></canvas>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <div class="sales-bottom-grid">
+            <section class="mp-card sales-table-card">
+                <div class="mp-card-head">
+                    <div>
+                        <h2>🏆 Layanan Terlaris</h2>
+                        <p>Top layanan berdasarkan nilai sales.</p>
+                    </div>
+                </div>
+                <div class="mp-table-wrap">
+                    <table class="mp-table sales-report-table">
+                        <thead>
+                            <tr>
+                                <th>Layanan</th>
+                                <th>Kategori</th>
+                                <th>Order</th>
+                                <th>Qty</th>
+                                <th>Sales</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        <% (reportData.topServices || []).forEach(item => { %>
+                            <tr>
+                                <td><strong><%= item.name %></strong></td>
+                                <td><span class="service-category-pill"><%= item.category || '-' %></span></td>
+                                <td><%= Number(item.orders || 0).toLocaleString('id-ID') %></td>
+                                <td><%= Number(item.qty || 0).toLocaleString('id-ID') %></td>
+                                <td><strong>Rp <%= Number(item.revenue || 0).toLocaleString('id-ID') %></strong></td>
+                            </tr>
+                        <% }) %>
+                        <% if(!(reportData.topServices || []).length){ %>
+                            <tr><td colspan="5" class="empty-cell">Belum ada data sales.</td></tr>
+                        <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="mp-card sales-table-card">
+                <div class="mp-card-head">
+                    <div>
+                        <h2>🕒 Order Terbaru</h2>
+                        <p>Order terakhir yang masuk ke laporan.</p>
+                    </div>
+                </div>
+                <div class="mp-table-wrap">
+                    <table class="mp-table sales-report-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>User</th>
+                                <th>Layanan</th>
+                                <th>Status</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        <% (reportData.latestOrders || []).forEach(order => { %>
+                            <tr>
+                                <td><span class="mp-id">#<%= order.id %></span></td>
+                                <td><strong><%= order.username || '-' %></strong><br><small><%= order.email || '-' %></small></td>
+                                <td><%= order.nama || '-' %></td>
+                                <td><%- include('partials/status',{status: order.status}) %></td>
+                                <td><strong>Rp <%= Number(order.total || 0).toLocaleString('id-ID') %></strong></td>
+                            </tr>
+                        <% }) %>
+                        <% if(!(reportData.latestOrders || []).length){ %>
+                            <tr><td colspan="5" class="empty-cell">Belum ada order.</td></tr>
+                        <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </main>
+</div>
+
+<script>
+const salesData = <%- JSON.stringify(reportData).replace(/</g, '\\u003c') %>;
+const page = document.querySelector('.sales-report-page');
+const revenueCanvas = document.getElementById('salesRevenueChart');
+const orderCanvas = document.getElementById('salesOrderChart');
+const modeTitles = {
+    yearly: ['Sales Pertahun', 'Nilai penjualan berdasarkan tahun.'],
+    monthly: ['Sales Perbulan', 'Nilai penjualan berdasarkan bulan.'],
+    weekly: ['Sales Perminggu', 'Nilai penjualan berdasarkan minggu.'],
+    daily: ['Sales Perhari', 'Nilai penjualan berdasarkan hari.']
+};
+let activeMode = 'yearly';
+
+function compactNumber(value) {
+    const n = Number(value || 0);
+    if (n >= 1000000000) return (n / 1000000000).toFixed(1).replace('.0','') + 'M';
+    if (n >= 1000000) return (n / 1000000).toFixed(1).replace('.0','') + 'JT';
+    if (n >= 1000) return (n / 1000).toFixed(1).replace('.0','') + 'RB';
+    return String(Math.round(n));
+}
+function themeColors() {
+    const dark = page.dataset.theme === 'dark';
+    return {
+        text: dark ? '#e8eefc' : '#203049',
+        muted: dark ? '#9fb0d0' : '#6d788b',
+        grid: dark ? '#2d3a55' : '#e8edf6',
+        line: dark ? '#8aa2ff' : '#4f75ff',
+        fill: dark ? 'rgba(138,162,255,.22)' : 'rgba(79,117,255,.16)',
+        bar: dark ? '#79d29a' : '#58bd72',
+        card: dark ? '#111b2f' : '#ffffff'
+    };
+}
+function drawLineChart(canvas, points, valueKey, label) {
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+    const width = rect.width;
+    const height = rect.height;
+    const c = themeColors();
+    ctx.clearRect(0, 0, width, height);
+
+    const pad = { left: 62, right: 22, top: 24, bottom: 58 };
+    const plotW = Math.max(width - pad.left - pad.right, 10);
+    const plotH = Math.max(height - pad.top - pad.bottom, 10);
+    const maxValue = Math.max(...points.map(p => Number(p[valueKey] || 0)), 1);
+
+    ctx.strokeStyle = c.grid;
+    ctx.lineWidth = 1;
+    ctx.fillStyle = c.muted;
+    ctx.font = '12px Inter, Segoe UI, Arial';
+    for (let i = 0; i <= 4; i++) {
+        const y = pad.top + plotH - (plotH * i / 4);
+        ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(width - pad.right, y); ctx.stroke();
+        ctx.fillText(compactNumber(maxValue * i / 4), 10, y + 4);
+    }
+
+    if (!points.length) {
+        ctx.fillStyle = c.muted;
+        ctx.font = '15px Inter, Segoe UI, Arial';
+        ctx.fillText('Belum ada data sales.', pad.left, pad.top + 28);
+        return;
+    }
+
+    const xFor = (i) => pad.left + (points.length === 1 ? plotW / 2 : plotW * i / (points.length - 1));
+    const yFor = (v) => pad.top + plotH - (Number(v || 0) / maxValue) * plotH;
+
+    ctx.beginPath();
+    points.forEach((p, i) => {
+        const x = xFor(i); const y = yFor(p[valueKey]);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = c.line;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    ctx.lineTo(xFor(points.length - 1), pad.top + plotH);
+    ctx.lineTo(xFor(0), pad.top + plotH);
+    ctx.closePath();
+    ctx.fillStyle = c.fill;
+    ctx.fill();
+
+    points.forEach((p, i) => {
+        const x = xFor(i); const y = yFor(p[valueKey]);
+        ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2);
+        ctx.fillStyle = c.line; ctx.fill();
+    });
+
+    ctx.fillStyle = c.text;
+    ctx.font = '12px Inter, Segoe UI, Arial';
+    const step = Math.max(1, Math.ceil(points.length / 8));
+    points.forEach((p, i) => {
+        if (i % step !== 0 && i !== points.length - 1) return;
+        const x = xFor(i);
+        ctx.save();
+        ctx.translate(x, height - 28);
+        ctx.rotate(points.length > 6 ? -0.45 : 0);
+        ctx.textAlign = points.length > 6 ? 'right' : 'center';
+        ctx.fillText(String(p.label || p.key), 0, 0);
+        ctx.restore();
+    });
+
+    ctx.fillStyle = c.muted;
+    ctx.font = '12px Inter, Segoe UI, Arial';
+    ctx.fillText(label, pad.left, 14);
+}
+function drawBarChart(canvas, points) {
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+    const width = rect.width;
+    const height = rect.height;
+    const c = themeColors();
+    ctx.clearRect(0, 0, width, height);
+    const pad = { left: 48, right: 18, top: 24, bottom: 50 };
+    const plotW = Math.max(width - pad.left - pad.right, 10);
+    const plotH = Math.max(height - pad.top - pad.bottom, 10);
+    const maxValue = Math.max(...points.map(p => Number(p.orders || 0)), 1);
+
+    ctx.strokeStyle = c.grid;
+    ctx.fillStyle = c.muted;
+    ctx.font = '12px Inter, Segoe UI, Arial';
+    for (let i = 0; i <= 4; i++) {
+        const y = pad.top + plotH - (plotH * i / 4);
+        ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(width - pad.right, y); ctx.stroke();
+        ctx.fillText(compactNumber(maxValue * i / 4), 10, y + 4);
+    }
+
+    if (!points.length) {
+        ctx.fillText('Belum ada data order.', pad.left, pad.top + 28);
+        return;
+    }
+
+    const gap = Math.max(6, plotW / Math.max(points.length, 1) * .18);
+    const barW = Math.max(8, (plotW - gap * (points.length - 1)) / points.length);
+    points.forEach((p, i) => {
+        const x = pad.left + i * (barW + gap);
+        const h = Math.max(3, (Number(p.orders || 0) / maxValue) * plotH);
+        const y = pad.top + plotH - h;
+        ctx.fillStyle = c.bar;
+        const radius = 7;
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + barW - radius, y);
+        ctx.quadraticCurveTo(x + barW, y, x + barW, y + radius);
+        ctx.lineTo(x + barW, y + h);
+        ctx.lineTo(x, y + h);
+        ctx.lineTo(x, y + radius);
+        ctx.quadraticCurveTo(x, y, x + radius, y);
+        ctx.fill();
+    });
+
+    ctx.fillStyle = c.text;
+    ctx.font = '12px Inter, Segoe UI, Arial';
+    const step = Math.max(1, Math.ceil(points.length / 7));
+    points.forEach((p, i) => {
+        if (i % step !== 0 && i !== points.length - 1) return;
+        const x = pad.left + i * ((plotW - Math.max(6, plotW / Math.max(points.length, 1) * .18) * (points.length - 1)) / points.length + Math.max(6, plotW / Math.max(points.length, 1) * .18));
+        ctx.save(); ctx.translate(x + 10, height - 26); ctx.rotate(-0.45); ctx.fillText(String(p.label || p.key), 0, 0); ctx.restore();
+    });
+}
+function renderCharts() {
+    const data = salesData[activeMode] || [];
+    const [title, subtitle] = modeTitles[activeMode];
+    document.getElementById('mainChartTitle').textContent = title;
+    document.getElementById('mainChartSubtitle').textContent = subtitle;
+    document.getElementById('ordersChartSubtitle').textContent = 'Jumlah order ' + subtitle.toLowerCase();
+    document.getElementById('salesDataCount').textContent = data.length + ' data';
+    drawLineChart(revenueCanvas, data, 'revenue', 'Sales');
+    drawBarChart(orderCanvas, data);
+}
+
+document.querySelectorAll('.sales-mode-tabs button').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.sales-mode-tabs button').forEach(item => item.classList.remove('active'));
+        btn.classList.add('active');
+        activeMode = btn.dataset.mode;
+        renderCharts();
+    });
+});
+
+document.querySelectorAll('.sales-theme-switcher button').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.sales-theme-switcher button').forEach(item => item.classList.remove('active'));
+        btn.classList.add('active');
+        page.dataset.theme = btn.dataset.theme;
+        localStorage.setItem('dk_sales_theme', btn.dataset.theme);
+        renderCharts();
+    });
+});
+const savedTheme = localStorage.getItem('dk_sales_theme') || 'light';
+page.dataset.theme = savedTheme;
+document.querySelectorAll('.sales-theme-switcher button').forEach(btn => btn.classList.toggle('active', btn.dataset.theme === savedTheme));
+window.addEventListener('resize', () => renderCharts());
+renderCharts();
+</script>
+</body>
+</html>

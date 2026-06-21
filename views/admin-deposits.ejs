@@ -1,1 +1,79 @@
-<!DOCTYPE html><html><head><title>Admin Deposit - <%= appName || 'DK PANEL' %></title><%- include('partials/panel-head') %></head><body class="mp-body"><div class="mp-layout"><%- include('partials/admin-sidebar') %><main class="mp-main"><%- include('partials/panel-top', {title:'Admin Deposit', subtitle:'Approve atau reject request deposit.'}) %><section class="mp-card"><div class="mp-card-head"><h2>▣ Deposit</h2></div><div class="mp-table-wrap"><table class="mp-table"><thead><tr><th>ID</th><th>User</th><th>Metode</th><th>Jumlah</th><th>Bukti</th><th>Status</th><th>Aksi</th></tr></thead><tbody><% if((deposits||[]).length===0){ %><tr><td colspan="7" class="empty-cell">Belum ada deposit.</td></tr><% } %><% (deposits||[]).forEach(d=>{ %><tr><td><%= d.id %></td><td><b><%= d.username %></b><br><small><%= d.email %></small></td><td><%= d.metode %></td><td>Rp <%= Number(d.amount||0).toLocaleString('id-ID') %></td><td><% if(d.proof_image){ %><a class="mp-btn small" href="<%= d.proof_image %>" target="_blank">Lihat</a><% } else { %>-<% } %></td><td><%- include('partials/status',{status:d.status}) %></td><td><% if(d.status === 'Pending'){ %><form action="/admin/deposit/update" method="POST" class="inline-form"><input type="hidden" name="id" value="<%= d.id %>"><button name="status" value="Approved" class="mp-btn small green">Approve</button><button name="status" value="Rejected" class="mp-btn small danger">Reject</button></form><% } else { %><span class="muted">Selesai</span><% } %></td></tr><% }) %></tbody></table></div></section></main></div></body></html>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Deposit - <%= appName || 'DK PANEL' %></title>
+    <%- include('partials/panel-head') %>
+</head>
+<body class="mp-body">
+<div class="mp-layout">
+    <%- include('partials/admin-sidebar') %>
+    <main class="mp-main admin-deposits-page-v25">
+        <%- include('partials/panel-top', {title:'Admin Deposit', subtitle:'Approve/reject deposit manual dengan guard saldo agar tidak double approve.'}) %>
+        <%
+            const list = deposits || [];
+            const st = stats || {};
+        %>
+        <% if(typeof pageError !== 'undefined' && pageError){ %><div class="mp-alert"><%= pageError %></div><% } %>
+        <div class="mp-admin-summary-grid service-summary-grid deposit-admin-summary-v25">
+            <article class="mp-admin-summary-card"><div class="mp-admin-summary-icon">▣</div><div><p>Total Deposit</p><strong><%= st.total || list.length %></strong><small>Semua request.</small></div></article>
+            <article class="mp-admin-summary-card danger-lite"><div class="mp-admin-summary-icon">⏳</div><div><p>Pending</p><strong><%= st.pending || 0 %></strong><small>Rp <%= Number(st.pendingAmount||0).toLocaleString('id-ID') %></small></div></article>
+            <article class="mp-admin-summary-card success"><div class="mp-admin-summary-icon">✓</div><div><p>Approved</p><strong><%= st.approved || 0 %></strong><small>Rp <%= Number(st.approvedAmount||0).toLocaleString('id-ID') %></small></div></article>
+            <article class="mp-admin-summary-card purple"><div class="mp-admin-summary-icon">×</div><div><p>Rejected</p><strong><%= st.rejected || 0 %></strong><small>Ditolak admin.</small></div></article>
+        </div>
+        <section class="mp-card">
+            <div class="mp-card-head deposit-card-head-v25"><div><h2>▣ Queue Deposit Manual</h2><p>Approve akan menambah saldo user dan membuat mutasi saldo. Deposit yang sudah diproses tidak bisa diproses ulang.</p></div><span class="mp-chip"><%= list.length %> deposit</span></div>
+            <div class="deposit-history-toolbar-v25">
+                <select id="adminDepositStatus"><option value="">Semua Status</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select>
+                <div class="mp-search"><input id="adminDepositSearch" placeholder="Cari user/email/metode/id..."><button type="button">🔍</button></div>
+            </div>
+            <div class="mp-table-wrap">
+                <table class="mp-table deposit-admin-table-v25">
+                    <thead><tr><th>ID</th><th>User</th><th>Metode</th><th>Saldo Masuk</th><th>Total Bayar</th><th>Bukti</th><th>Status</th><th>Aksi</th></tr></thead>
+                    <tbody>
+                    <% if(list.length===0){ %><tr><td colspan="8" class="empty-cell">Belum ada deposit.</td></tr><% } %>
+                    <% list.forEach(d=>{ const status=String(d.status||'').toLowerCase(); %>
+                        <tr class="admin-deposit-row-v25" data-status="<%= status %>" data-search="<%= String((d.id||'')+' '+(d.username||'')+' '+(d.email||'')+' '+(d.metode||'')).toLowerCase() %>">
+                            <td><span class="mp-id">#<%= d.id %></span><br><small><%= d.created_at ? new Date(d.created_at).toLocaleString('id-ID') : '-' %></small></td>
+                            <td><strong><%= d.username %></strong><br><small><%= d.email %></small></td>
+                            <td><strong><%= d.metode || '-' %></strong><br><small><%= d.payment_type || '-' %></small></td>
+                            <td>Rp <%= Number(d.amount||0).toLocaleString('id-ID') %></td>
+                            <td><strong>Rp <%= Number(d.total_pay || d.amount || 0).toLocaleString('id-ID') %></strong><br><small>Fee Rp <%= Number(d.fee_amount || 0).toLocaleString('id-ID') %> • Kode <%= Number(d.unique_code || 0).toLocaleString('id-ID') %></small></td>
+                            <td><% if(d.proof_image){ %><a class="mp-btn small mp-btn-soft" href="<%= d.proof_image %>" target="_blank">Lihat Bukti</a><% } else { %>-<% } %></td>
+                            <td><%- include('partials/status',{status:d.status}) %><% if(d.admin_note){ %><br><small><%= d.admin_note %></small><% } %></td>
+                            <td>
+                                <% if(d.status === 'Pending'){ %>
+                                    <form action="/admin/deposit/update" method="POST" class="deposit-action-form-v25" onsubmit="return confirm('Proses deposit #<%= d.id %>?')">
+                                        <input type="hidden" name="id" value="<%= d.id %>">
+                                        <input type="text" name="admin_note" placeholder="Catatan admin (opsional)">
+                                        <div class="deposit-action-buttons-v25">
+                                            <button name="status" value="Approved" class="mp-btn small green">Approve</button>
+                                            <button name="status" value="Rejected" class="mp-btn small danger">Reject</button>
+                                        </div>
+                                    </form>
+                                <% } else { %>
+                                    <span class="balance-note ok">Selesai</span>
+                                <% } %>
+                            </td>
+                        </tr>
+                    <% }) %>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+</div>
+<script>
+(function(){
+    const rows = Array.from(document.querySelectorAll('.admin-deposit-row-v25'));
+    const status = document.getElementById('adminDepositStatus');
+    const search = document.getElementById('adminDepositSearch');
+    function apply(){
+        const st = status?.value || '';
+        const q = (search?.value || '').toLowerCase();
+        rows.forEach(row => row.style.display = (!st || row.dataset.status === st) && (!q || row.dataset.search.includes(q)) ? '' : 'none');
+    }
+    status?.addEventListener('change', apply); search?.addEventListener('input', apply);
+})();
+</script>
+</body>
+</html>
